@@ -42,7 +42,12 @@ Only `template.txt` is tracked. Personal portfolio inputs and results stay local
 
 Rewrites prose so people will actually read it. Applies Orwell's six rules and strips the common LLM tells: passive voice, dead metaphors, -ly padding, and machine-made sentence shapes. Use it for essays, emails, reports, blog posts, and other general prose.
 
-To use with Claude Code or the Claude apps, place the `skills/writing/` folder where your agent loads skills (for Claude Code, under `.claude/skills/`).
+### poster-making
+**Location:** `skills/poster-making/`
+
+Turns a repository into a printable two-sided A4 poster: a self-contained HTML file, two 300 DPI PNGs, and a print-ready PDF. It mines the README, the docs, and an optional slide deck for content, then builds a dense panel infographic with inlined fonts, a QR code it proves scans, and a chart drawn as inline SVG rather than screenshotted. Use it for conference posters, handouts, and one-pagers.
+
+To use a skill with Claude Code or the Claude apps, place its folder where your agent loads skills (for Claude Code, under `.claude/skills/`).
 
 ## Using a prompt
 
