@@ -174,6 +174,10 @@ Every question you can ask is one of three types, and the type you pick is a cla
 | `Choice` | Which of these options fits? Up to 255 of them. | `.choice`, `.probabilities` over every option, `.confidence`. |
 | `Score` | Where on this ordered rubric does it sit? | `.score`, which lands between levels (1.035 is a real answer), `.probabilities`, `.confidence`. |
 
+If you have built classifiers, you already have the right names for these. **Choice** is nominal: the options are categories with no order, so billing sits no nearer to technical than it does to sales, and the only honest summary is which one won and how the mass split. **Score** is ordinal: you write the levels in order, and the answer is allowed to land between them. **Noul** is the binary case, and its probability is what a classifier would call the positive-class score.
+
+The ordinal reading carries an assumption worth knowing before you threshold on it. A score of 1.4 is a probability-weighted average over levels you numbered 0, 1 and 2 by writing them in that order, which treats the step from "calm" to "frustrated" as the same size as the step from "frustrated" to "furious". Write a rubric whose steps are about evenly spaced and that arithmetic holds. Write one that runs "minor, moderate, catastrophic" and 1.4 is a convenient number rather than a measurement, because the last step is worth more than the first.
+
 Two rules govern how you write the questions, and breaking the first causes most of the trouble. Keep each question atomic, so that it asks about exactly one thing. "Is this ticket urgent and about billing?" has no honest answer when the ticket is urgent and about something else; the model picks one half of your question for you and never says which half it picked. Ask the two questions separately. The second rule follows: when a judgment has several parts, keep the weighting in your own code rather than inside the wording of one question, where you can read it in a diff and change it without retraining anything.
 
 ## The request and the response
