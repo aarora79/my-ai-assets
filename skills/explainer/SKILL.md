@@ -4,7 +4,7 @@ description: Build a self-contained HTML explainer for a technical topic - what 
 license: MIT-0
 metadata:
   author: aarora79
-  version: "1.0"
+  version: "1.1"
 ---
 
 # Explainer
@@ -17,7 +17,7 @@ The output is one HTML file: no build step, no second file, no server. A reader 
 
 Write every sentence under the `writing` skill in this repo (`skills/writing/`). Load it before you draft. It governs the prose: Orwell's six rules, the ban lists, the sentence-shape tells, the revision pass.
 
-This skill adds what teaching needs on top: the order ideas arrive in, and the rule that no term appears before its definition.
+This skill adds what teaching needs on top: the order ideas arrive in, the rule that no term appears before its definition, and the habits that turn an assertion into an explanation. It also names which of the writing skill's compression rules bend when the reader is learning the subject rather than catching up on it.
 
 ## Inputs
 
@@ -58,6 +58,34 @@ This is the part that separates an explainer from a summary. Hold all of it.
 10. **Cut the words that punish the reader**: simply, just, obviously, of course, as you know, clearly, trivially, it goes without saying, everyone knows. Each one tells the reader who did not know that they should have.
 
 **ELI5 means the order concepts arrive in, not baby talk.** Do not water the engineering down, do not round the numbers off, and do not swap the exact term for a vague one. Define `idempotent` and then use `idempotent`.
+
+### Explain, do not assert
+
+A summary states what is true. An explainer shows why it is true and why the reader should care. The difference is visible sentence by sentence. Read a paragraph and mark each sentence **A** for assertion or **E** for explanation. A paragraph of all A's is a summary wearing an explainer's heading, and it is the failure this skill exists to prevent.
+
+Seven habits produce the E sentences:
+
+1. **Every claim that matters gets a because.** "Jev returns typed answers" is an assertion. "Jev returns typed answers, so the parse step and the retry that guards it both disappear from your code" explains.
+2. **Lead with the problem, then the thing.** The reader should feel the pain a paragraph before they meet the fix. A reader who has not felt the problem has no place to put the solution.
+3. **Answer the question the reader is about to ask.** Read the draft as somebody who does not already agree. Wherever they would say "wait, why" or "so what", the answer belongs in the next sentence, not three sections later.
+4. **Say the hard idea twice: once in the domain's words, once in ordinary ones.** This is the one place repetition earns its keep. "Calibrated" and "when it says 0.9 it is right about nine times in ten" are the same sentence for two different readers.
+5. **Give the mechanism an analogy, then say where the analogy breaks.** An analogy nobody bounds turns into a wrong mental model that the reader keeps for years.
+6. **Walk one example end to end before you generalize.** Real values, in order, with the intermediate state shown. The general rule lands once the reader has watched it happen once.
+7. **Length follows difficulty, not importance.** Three sentences for the idea they will trip over, one for the idea they will not. A section that is important and obvious stays short.
+
+### Which writing-skill rules bend here
+
+The `writing` skill is built for compression, and compression fights teaching. These are the only rules that move, and they move this far and no further:
+
+| Rule in `writing` | In an explainer |
+|---|---|
+| Cut a first draft by a third | Cut the padding, keep the explanation. Word count follows difficulty. |
+| No summary paragraph that repeats what you just said | Holds at the end of the page. After a hard mechanism, one short "what just happened" line is a checkpoint, not a summary. |
+| No lists of three when two facts will do | Relaxed when the three are real: three question types are three. |
+| No setup or payoff sentences | Holds for rhythm. A sentence that poses the reader's actual question is the question, not a setup. |
+| One idea per sentence | Holds, and matters more here. It is what makes a long explanation readable. |
+| Concrete over abstract, numbers over adjectives | Holds without exception. |
+| No passive, no ban-list phrases, no -ly padding, no antithesis, no corrective negation | Holds without exception. |
 
 ## Step 3 - the shape that works
 
@@ -145,6 +173,7 @@ Run all of it. Every check has caught something real.
 6. **Render.** Screenshot light, dark and 390px wide, and look at them. Check that nothing overflows its container.
 7. **Links.** Every URL in the source list resolves.
 8. **Numbers.** Every figure on the page traces to a source in the list, with a date.
+9. **Register.** Take three sections and mark every sentence A or E, as above. A section with no E sentences is a summary. Rewrite it before you ship.
 
 ```python
 # the two checks worth automating first
@@ -185,5 +214,6 @@ print(pg.evaluate("""() => {
 - Do not state a number without a date and an owner.
 - Do not present a vendor's self-scored benchmark as measured fact.
 - Do not write a section whose only job is to introduce the next one.
+- Do not ship a section that is all assertion. A reader who did not already know the subject has to learn why, not only what.
 - Do not add a diagram that repeats what the paragraph above it already said.
 - Do not pad to length. A page that earns 1,200 words should be 1,200 words.

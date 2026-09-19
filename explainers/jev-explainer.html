@@ -205,9 +205,15 @@
 
 <h2 id="what">What Jev is</h2>
 
-<p>TypeSafe AI calls Jev a <em>System One model</em>, after Kahneman's fast thinking. You hand it <b>state</b>, meaning whatever your program already holds: a support ticket, a file, the last six turns of a conversation. Alongside the state you send a set of typed questions. Jev returns one answer per question, each with a probability distribution behind it. It writes no text and calls no tools.</p>
+<p>Think about what your code asks a language model to do most of the day. Rarely "write me an essay". Far more often: is this ticket about billing? Is this diff risky? Should I read more of the file before I edit it? Each one is a decision with a small set of answers, and you know the answers before you ask: billing, technical or sales; risky or not.</p>
 
-<p>The company's own line for it: <em>"a frontier-intelligence function call: unstructured state in, typed probabilistic decisions out."</em> That framing matters more than the benchmark. Jev decides. It leaves the writing to something else.</p>
+<p>Now look at the machinery it takes to get one. You write a prompt, the model writes a paragraph or a JSON blob back, and your code parses it, checks that the parse worked, and handles the case where it did not. You are asking a machine that produces text to make a choice, then turning the text back into the choice you wanted. The text in the middle is overhead, and you pay for it twice: in tokens, and in the seconds somebody spends waiting.</p>
+
+<p>Jev deletes the middle. You hand it <b>state</b>, meaning whatever your program already holds: the ticket, the file, the last six turns of a conversation. With the state you send a list of questions, each one carrying its possible answers written out in advance. What comes back is the answers, with no sentence wrapped around them, nothing to parse and nothing to retry.</p>
+
+<p>TypeSafe calls this a <b>System One model</b>, after Daniel Kahneman's name for fast, automatic thinking: the judgment you reach without deliberating, the way you read a face as angry before you could explain how you knew. Kahneman's System Two is the slow, effortful kind you use on long division or a legal argument. A frontier LLM does System Two work, and you can talk it into doing System One work badly. Jev does one of those jobs and refuses the other.</p>
+
+<p>The company's own line for it: <em>"a frontier-intelligence function call: unstructured state in, typed probabilistic decisions out."</em> Take that as a promise about the call shape rather than a boast. You already know how to call a function, branch on what it returns and write a test for it. That is the whole interface.</p>
 
 <div class="num-strip">
   <div class="num"><b>70–500 ms</b><span>End to end. Most calls land near 100 ms, per TypeSafe.</span></div>
@@ -217,7 +223,7 @@
 </div>
 <p class="byline" style="margin-bottom:0">Vendor figures from the TypeSafe launch post and docs, September 2026. Nobody outside the company has reproduced the latency yet.</p>
 
-<p>A frontier LLM asked to classify a support ticket loads the prompt and generates one token at a time, feeding each token back in before it picks the next. That loop is what <b>autoregressive</b> means. The model stops, and hands you a string you then parse and validate. TypeSafe measured those round trips at 3 to 329 seconds. Jev loads the same state once and reads out every answer in parallel.</p>
+<p>The time gap comes from the shape of the two calls. A frontier LLM asked to classify that ticket loads the prompt and then produces one token at a time, feeding each token it has written back in before it picks the next. That loop is what <b>autoregressive</b> means, and it explains why a long answer takes longer than a short one: the model runs itself once per token. TypeSafe measured those round trips at 3 to 329 seconds. Jev takes in the same state once and produces every answer at the same time, which is what makes a tenth of a second possible at all.</p>
 
 <figure>
 <svg viewBox="0 0 820 330" role="img" aria-labelledby="d1t">
@@ -302,22 +308,22 @@
 
 <h2 id="how">How it answers ten questions in the time an LLM writes one word</h2>
 
-<p>Three design choices do the work.</p>
+<p>Three design choices produce that speed. Each one also costs something, and the cost is the part worth knowing before you build on it.</p>
 
-<p><b>The architecture is non-autoregressive.</b> Jev produces all its outputs from a single pass rather than feeding each token back in. TypeSafe describes it as parallel sampling that is hardware-aware. Jev scores every question in a request against the same state, and no question sees another's answer, so one answer cannot poison the next. TypeSafe says it found no batching penalty past normal sampling noise.</p>
+<p><b>The architecture is non-autoregressive.</b> Jev produces all of its outputs from a single pass instead of feeding each token back in, which is exactly the loop it removes. TypeSafe describes it as parallel sampling that is hardware-aware. You feel the difference when you add questions: Jev scores every question in a request against the same state, none of them sees another's answer, so the model can work on all of them at once. TypeSafe says it found no batching penalty past normal sampling noise, which in practice means a request carrying twelve questions costs the tokens of twelve and about the wall-clock of one. The price of that design is that questions cannot build on each other. If question B needs the answer to question A, you are making two calls, and the round trip you saved comes straight back.</p>
 
-<p><b>You fix the output space in advance.</b> You declare the options before the call. The model picks among them and reports how the probability mass fell. A malformed answer has nowhere to live, which is why the 0% type-error rate is structural. That claim says nothing about whether the answer is <em>right</em>.</p>
+<p><b>You fix the output space in advance.</b> You list the options before the call, so the model chooses among your strings rather than inventing one of its own, and it reports how the probability mass fell across them. This is why the 0% type-error rate is structural rather than measured: a malformed answer has nowhere to live, because no free-form text exists for it to live in. Be precise about what that buys. You will never write a retry for a broken parse again. You have learned nothing about whether the answer is <em>right</em>, and a confidently wrong answer arrives in the same well-formed shape as a correct one.</p>
 
-<p><b>Training targeted calibration</b>, which means the probability the model states matches how often that answer turns out right. TypeSafe trained Jev with Reinforcement Learning for Calibrated Decisions, which rewards exactly that. Over many answers, the ones marked 0.9 should be right about nine times in ten. That property makes confidence usable as a gate in code: confidence is the share of the probability mass sitting on the answer the model picked. Test it on your own data before you trust it in production.</p>
+<p><b>Training targeted calibration</b>, which means the probability the model states matches how often that answer turns out right. TypeSafe trained Jev with Reinforcement Learning for Calibrated Decisions, which rewards that match rather than rewarding a helpful-sounding reply. In plain terms: take every answer the model marked 0.9, and about nine in ten of them should be correct. That property lets you put the number inside an <code>if</code> statement, and that claim is the one worth testing yourself, because every gate and threshold you build on Jev inherits it. The number you test is <b>confidence</b>, the share of the probability mass sitting on the answer the model picked. A choice among five options that comes back at 0.91 leaves the other four splitting 0.09 between them.</p>
 
 <div class="callout">
   <p><b>THE OPEN REPRODUCTION TELLS YOU MORE THAN THE BLOG POST.</b></p>
-  <p><a href="https://github.com/ekzhang/openjev-sglang">openjev-sglang</a> rebuilds the interface on open weights with a one-token readout: read the state once, append a per-question suffix, then take the model's own scores for the answer labels (its log-probabilities) and renormalize them over those labels alone. Labels are <code>A</code>–<code>Z</code> and verified single-token pairs such as <code>AA</code>, so every answer reads out in exactly one token. Jev may not work this way inside. openjev is still the cheapest way to get the same call shape on a model you host, and it runs on SGLang, an open-source inference server.</p>
+  <p>Jev itself is closed, so the mechanism above comes from what TypeSafe chooses to publish. The cheapest way to see how a call like this can work is to read somebody rebuilding it on parts you can inspect. <a href="https://github.com/ekzhang/openjev-sglang">openjev-sglang</a> rebuilds the interface on open weights with a one-token readout: read the state once, append a per-question suffix, then take the model's own scores for the answer labels (its log-probabilities) and renormalize them over those labels alone. Labels are <code>A</code>–<code>Z</code> and verified single-token pairs such as <code>AA</code>, so every answer reads out in exactly one token. Jev may not work this way inside. openjev is still the cheapest way to get the same call shape on a model you host, and it runs on SGLang, an open-source inference server.</p>
 </div>
 
 <h2 id="primitives">The three primitives</h2>
 
-<p>Every question you can ask is one of three types. You mix them in one request. Each answer carries its probability distribution and its confidence.</p>
+<p>Every question you can ask is one of three types, and the type you pick is a claim about the shape of the answer. Pick the wrong shape and you fight it later: a yes-or-no judgment forced into a five-option choice throws away the single number you wanted. You mix all three types in one request. Each answer carries its probability distribution and its confidence.</p>
 
 <table>
   <thead><tr><th>Type</th><th>Asks</th><th>Returns</th></tr></thead>
@@ -374,13 +380,13 @@ response = client.system_one(
 dept = response.answers["department"]
 print(dept.choice, dept.confidence)</code></pre>
 
-<p>Two rules govern how you write the questions. Keep each one atomic, so it asks about one thing. Break a compound judgment into parts and combine them in your own code, where you can see the weights and change them without retraining anything.</p>
+<p>Two rules govern how you write the questions, and breaking the first causes most of the trouble. Keep each question atomic, so that it asks about exactly one thing. "Is this ticket urgent and about billing?" has no honest answer when the ticket is urgent and about something else; the model picks one half of your question for you and never says which half it picked. Ask the two questions separately. The second rule follows: when a judgment has several parts, keep the weighting in your own code rather than inside the wording of one question, where you can read it in a diff and change it without retraining anything.</p>
 
 <h2 id="api">The request and the response</h2>
 
-<p>One endpoint: <code>POST https://api.typesafe.ai/v1/systemone</code>. The body holds <code>state</code>, <code>model</code> and <code>questions</code>. The response holds <code>model</code>, <code>answers</code> keyed by your question ids, and <code>usage</code>.</p>
+<p>One endpoint does everything: <code>POST https://api.typesafe.ai/v1/systemone</code>. The body holds <code>state</code>, <code>model</code> and <code>questions</code>. The response holds <code>model</code>, <code>answers</code> keyed by the ids you chose for your questions, and <code>usage</code>. No session, no thread, no conversation history to manage, because nothing carries over from one call to the next. Every call is a function call with its arguments in front of it.</p>
 
-<p>State can be a string, an object, or an array. Use an object. Named fields tell the model what each part is. They also let you diff one state against another once you log every call.</p>
+<p>State can be a string, an object, or an array, and the choice matters more than it looks. Use an object. Named fields tell the model what each part of the state is, so <code>{"ticket": …, "customer_history": …}</code> reads differently from the same two blocks of text glued together, where the model has to guess where one ends. Named fields also let you diff one state against another once you start logging every call, which is what you will want the first hour an answer surprises you.</p>
 
 <figure>
 <svg viewBox="0 0 820 300" role="img" aria-labelledby="d2t">
@@ -432,10 +438,10 @@ print(dept.choice, dept.confidence)</code></pre>
 <h2 id="patterns">Five patterns that hold up</h2>
 
 <h3>1. Fan out</h3>
-<p>Ask everything you might want in one request. TypeSafe batched 13 questions against a 53,777-character document and measured it at 12.2× cheaper and 10× faster than 13 separate calls, because Jev reads the state once. Adding a question adds its own tokens and close to no time.</p>
+<p>Ask for everything you might want in one request, including the signals you do not need yet. TypeSafe batched 13 questions against a 53,777-character document and measured it at 12.2× cheaper and 10× faster than 13 separate calls. The reason is the state rather than the questions: sending 53,777 characters once and asking thirteen things beats sending it thirteen times. So the habit to build is to ask for the signal you might want later while the state is already in flight. A fourteenth question costs its own tokens and close to no time.</p>
 
 <h3>2. Gate on confidence, and set a different gate per action</h3>
-<p>The cost of being wrong differs by action, so one threshold across a system is wrong for most of it.</p>
+<p>The cost of being wrong differs by action, so a single threshold set once for a whole system is wrong nearly everywhere it applies. Showing an account balance to the person who owns the account can run at 0.5, because a wrong answer costs a puzzled user and one more click. Moving money at 0.5 is indefensible. Put the bar where the consequence is, and write the number beside the action it guards rather than in a settings file three directories away.</p>
 
 <pre><code>action = response.answers["intent"]
 
@@ -474,7 +480,7 @@ elif action.choice == "approve_transfer":
 </figure>
 
 <h3>3. Composite scoring</h3>
-<p>Split a judgment into dimensions, ask each on its own, and weight them in code.</p>
+<p>Split a judgment into dimensions, ask each one on its own, and weight them in code. Asking "how good is this candidate" in a single question hides the weighting inside the model, where you cannot see it, argue with it or change it. Three questions and three weights put the same judgment in front of you.</p>
 
 <pre><code>composite = (
     0.40 * (response.answers["python_depth"].score / 4) +
@@ -485,7 +491,7 @@ elif action.choice == "approve_transfer":
 <p>The weights live in your repo, under review, in a diff. Changing how much system design counts takes a pull request rather than a prompt rewrite.</p>
 
 <h3>4. Cascade</h3>
-<p>Jev routes. Plain code handles the easy cases and a frontier model takes the rest.</p>
+<p>Jev routes. Plain code handles the easy cases and a frontier model takes the rest. Watch what this does to the bill: the expensive model only sees the requests that need it, and in most systems those are a small share of the traffic. The routing decision costs a fraction of a cent and happens before anything expensive starts.</p>
 
 <pre><code>if intent.confidence &lt; 0.5:
     return route_to_human(message)
@@ -498,11 +504,11 @@ elif intent.choice == "complaint":
     return handle_with_llm(message, SPECIALIST)</code></pre>
 
 <h3>5. Retrieve, then judge</h3>
-<p>Filter in code first and send the fields the question needs. Accuracy falls as you pad the state with material that has nothing to do with the question, and you pay for the padding.</p>
+<p>Filter in code first and send only the fields the question needs. Two things get worse as you pad the state. Accuracy falls, because the model is reading material with no bearing on what you asked. And you pay for every token of the padding, on every call, forever. A retrieval step that returns the five rows that matter beats one that returns fifty and hopes the model sorts it out.</p>
 
 <h2 id="cannot">What it gets wrong</h2>
 
-<p>TypeSafe publishes the failure modes, which is more than most model cards do. Weigh them before you wire Jev into a decision path.</p>
+<p>TypeSafe publishes its own failure modes, which is more than most model cards do. Read the list as a map of where to put code instead of a model. Almost every item below has the same workaround: do that part in Python, and ask Jev only for the judgment that Python cannot make.</p>
 
 <ul>
   <li><b>It cannot count.</b> Characters in a word, occurrences of a term, items in a list: all unreliable.</li>
@@ -520,7 +526,7 @@ elif intent.choice == "complaint":
 
 <h2 id="repos">Repos worth reading</h2>
 
-<p><a href="https://github.com/cobanov/awesome-jev">cobanov/awesome-jev</a> tracks the lot. These are the ones that teach you something.</p>
+<p>A few hundred projects appeared in the weeks after launch, and <a href="https://github.com/cobanov/awesome-jev">cobanov/awesome-jev</a> tracks them. Most are wrappers. The ones below are worth an hour each, because they show a design decision you would otherwise have to make blind: where to put the threshold, what to do when the model is unsure, and how to keep a fast model from quietly taking over a slow model's job.</p>
 
 <table>
   <thead><tr><th>Repo</th><th>What it does</th><th>Why read it</th></tr></thead>
@@ -542,7 +548,9 @@ elif intent.choice == "complaint":
 <div class="idea">
 <span class="tag">Your idea, worked out</span>
 
-<p>Claude Code already records every decision it made and what happened next. That is a labeled dataset sitting on disk, and nobody is using it. Jev turns it into a counterfactual one, a record of what a second opinion would have done at each step. At each point where the agent picked a tool, ask Jev what it would have picked. Then read the rest of the transcript for how the agent's choice turned out.</p>
+<p>Every Claude Code session writes a transcript to disk, and the transcript holds two things a dataset needs: the decision the agent made, and what happened next. That second part is the rare one. Labels usually cost money and a week of somebody's attention, and here the session labels itself — a tool call that errored, a turn you interrupted, a file the agent had to come back and fix.</p>
+
+<p>What it does not hold is the road not taken. That is the gap Jev fills, and it fills it for about the price of a coffee. At each point where the agent picked a tool, hand Jev the same state the agent had and ask what it would have picked. Now every decision point has three things beside it: what the agent did, what a second opinion would have done, and how it turned out. A row where the two disagree and the outcome was bad is a <b>counterfactual</b> example, meaning a case where you can say what should have happened instead.</p>
 
 <h3>What the files hold</h3>
 
@@ -749,7 +757,7 @@ def to_row(row, a):
 
 <h3>What comes out</h3>
 
-<p>Map each real tool to the same five buckets — <code>Read</code>, <code>Grep</code> and <code>Glob</code> to <code>read_more</code>, <code>Edit</code> and <code>Write</code> to <code>edit</code>, <code>Bash</code> running a test to <code>run_tests</code> — and you have two products from one pass.</p>
+<p>Before the rows mean anything, Jev's answer and the agent's action have to live in the same vocabulary. Map each real tool onto the same five buckets the question uses: <code>Read</code>, <code>Grep</code> and <code>Glob</code> become <code>read_more</code>; <code>Edit</code> and <code>Write</code> become <code>edit</code>; <code>Bash</code> running a test becomes <code>run_tests</code>. Once both sides speak the same five words, one pass over the corpus gives you two separate things.</p>
 
 <ol>
   <li><b>A calibration curve on your own work.</b> Bucket <code>p_needs_verification</code> by tenths and compare each bucket against the share of rows labeled <code>failed</code>. If the 0.9 bucket fails 30% of the time, Jev is not calibrated for this task and no threshold will save you.</li>
@@ -773,7 +781,7 @@ def to_row(row, a):
 
 <p>The <code>swe-router</code> skill in <code>vend/</code> already splits in two. <code>route.py</code> does arithmetic over <code>models.json</code> — 18 models, 21 tasks, scores by complexity tier, cost per task, a 3-point noise band. That half is deterministic and testable. The other half asks a frontier model to read the repo and place the task in one of four tiers, <code>trivial</code> to <code>high</code>. It then sets a floor of 55, 65, 70 or 75 by judging what breaks if the change is wrong.</p>
 
-<p>That second half is a System One job. It returns four values, it has no business generating text, and today it costs a slice of an Opus turn to produce a number that <code>route.py</code> then looks up in a table.</p>
+<p>That second half is a System One job wearing a frontier model's clothes. Look at what it produces: four values, none of them prose, all of them fed straight into a lookup table. Today that costs a slice of an Opus turn and takes as long as a paragraph takes to write, and the answer changes a little each time you run it, because prose judgment does.</p>
 
 <figure>
 <svg viewBox="0 0 820 300" role="img" aria-labelledby="d5t">
@@ -869,7 +877,7 @@ def route(task, repo_map, touched_paths):
     )
     return json.loads(out.stdout), a</code></pre>
 
-<p>Four things change, and each is worth having on its own.</p>
+<p>Four things change, and each one is worth having even without the other three.</p>
 
 <ul>
   <li><b>The skill runs without a frontier model.</b> Today it needs an agent to read the repo and form a view. With Jev doing that in 100 ms for a fraction of a cent, the router fits in a pre-commit hook, a CI gate, or a wrapper that picks the model before the agent starts.</li>
@@ -911,7 +919,7 @@ r = client.system_one(
 for k, v in r.answers.items():
     print(f"{k:20} {v.noul:.2f}")</code></pre>
 
-<p>Run it against twenty READMEs you know well. Check whether the 0.9 answers are right about nine times in ten. That test costs a few cents and tells you more about whether Jev fits your problem than any benchmark page will.</p>
+<p>Run that against twenty READMEs you already know well, and read the numbers against what you know is in the files. You are not checking whether Jev is clever. You are checking the one claim everything else rests on: that when it says 0.9 it is right about nine times in ten, on your material rather than on TypeSafe's. Twenty documents costs a few cents and tells you more than any benchmark page will, because a benchmark page cannot know what your states look like.</p>
 
 <h2>Sources</h2>
 <ul class="sources">
