@@ -57,6 +57,7 @@ p{font-size:10.6px;line-height:1.33}
 .three{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .q{border:2.2px solid var(--ink);border-radius:9px;padding:7px 9px;background:var(--card)}
 .q .k{font-size:10px;font-weight:700;color:var(--teal-d)}
+.q .k .sc{font-size:7.4px;font-weight:400;color:var(--muted);letter-spacing:.6px;text-transform:uppercase}
 .q .a{font-size:9px;line-height:1.28;margin:3px 0 4px}
 .q .r{font-size:8.1px;line-height:1.25;color:var(--muted);border-top:1.4px dashed var(--muted);padding-top:3px}
 pre{font-family:'JetBrains Mono',monospace;font-size:7.9px;line-height:1.36;background:var(--ink);color:#EDEAE2;
@@ -146,20 +147,20 @@ tr:last-child td{border-bottom:none}
   </div>
 
   <div class="card">
-    <h2><span class="chip">02</span>Three question types, one round trip<span class="tail">mix them freely in one call</span></h2>
+    <h2><span class="chip">02</span>Three question types, one round trip<span class="tail">nominal, ordinal, binary &#183; mix them in one call</span></h2>
     <div class="three">
       <div class="q">
-        <div class="k">Choice</div>
+        <div class="k">Choice <span class="sc">nominal</span></div>
         <div class="a">Pick one option from a set you write out. Up to 255 of them.</div>
         <div class="r">.choice &#183; .probabilities &#183; .confidence</div>
       </div>
       <div class="q">
-        <div class="k">Score</div>
+        <div class="k">Score <span class="sc">ordinal</span></div>
         <div class="a">Place the state on a rubric you order yourself. 1.4 is a real answer.</div>
         <div class="r">.score &#183; .probabilities &#183; .confidence</div>
       </div>
       <div class="q">
-        <div class="k">Noul</div>
+        <div class="k">Noul <span class="sc">binary</span></div>
         <div class="a">Is this statement true of the state? Answered as a probability.</div>
         <div class="r">.noul &#8212; the number is the confidence</div>
       </div>
