@@ -179,7 +179,7 @@
 
 <header class="top">
   <h1>Jev: a model that decides instead of writing</h1>
-  <p class="standfirst">TypeSafe AI shipped a model that answers typed questions in about a tenth of a second and never returns prose. This covers how it works, what people have built with it, and one idea worth building on top of work you already have.</p>
+  <p class="standfirst">TypeSafe AI shipped a model that answers typed questions in about a tenth of a second and never returns prose. This covers how it works, where it breaks, and a forty-line script you can run against your own files in the next twenty minutes.</p>
   <p class="byline">Written 19 September 2026 · all numbers dated and attributed · code samples in Python</p>
 </header>
 
@@ -193,9 +193,7 @@
     <li><a href="#patterns">Five patterns that hold up</a></li>
     <li><a href="#cannot">What it gets wrong</a></li>
     <li><a href="#repos">Repos worth reading</a></li>
-    <li><a href="#idea1">Build it: mine Claude Code transcripts into a decision dataset</a></li>
-    <li><a href="#more">Four more ideas</a></li>
-    <li><a href="#start">Twenty minutes to first answer</a></li>
+    <li><a href="#start">Run it yourself</a></li>
   </ol>
 </div>
 
@@ -620,266 +618,66 @@ elif intent.choice == "complaint":
 
 <p>LangChain shipped <code>langchain-typesafe</code> with two middlewares that land close to our work: <code>ModelRouterMiddleware</code>, which picks a model per request from criteria you write, and <code>AutoModeMiddleware</code>, which blocks risky tool calls before they run.</p>
 
-<h2 id="idea1">Build it: mine Claude Code transcripts into a decision dataset</h2>
+<h2 id="start">Run it yourself</h2>
 
-<div class="idea">
-<span class="tag">Your idea, worked out</span>
-
-<p>Every Claude Code session writes a transcript to disk, and the transcript holds two things a dataset needs: the decision the agent made, and what happened next. That second part is the rare one. Labels usually cost money and a week of somebody's attention, and here the session labels itself — a tool call that errored, a turn you interrupted, a file the agent had to come back and fix.</p>
-
-<p>What it does not hold is the road not taken. That is the gap Jev fills, and it fills it for about the price of a coffee. At each point where the agent picked a tool, hand Jev the same state the agent had and ask what it would have picked. Now every decision point has three things beside it: what the agent did, what a second opinion would have done, and how it turned out. A row where the two disagree and the outcome was bad is a <b>counterfactual</b> example, meaning a case where you can say what should have happened instead.</p>
-
-<h3>What the files hold</h3>
-
-<p>On this Windows box the transcripts live at <code>%USERPROFILE%\.claude\projects\&lt;slug&gt;\&lt;session-uuid&gt;.jsonl</code>, where the slug is the working directory with separators turned into dashes: <code>c--Users-aroraai-Downloads-my-work-SFDC</code>. One session file there runs to 3.76 MB. Sampling its first 400 lines gives the record shapes:</p>
-
-<table>
-  <thead><tr><th>Record</th><th>Keys</th><th>Count in 400 lines</th></tr></thead>
-  <tbody>
-    <tr><td>assistant turn</td><td><code>parentUuid, isSidechain, message, type, uuid, timestamp, effort, cwd, sessionId, version, gitBranch</code></td><td>136</td></tr>
-    <tr><td>tool result</td><td>the above plus <code>promptId, toolUseResult, sourceToolAssistantUUID</code></td><td>58</td></tr>
-    <tr><td>user prompt</td><td>the above plus <code>permissionMode, origin, promptSource</code></td><td>10</td></tr>
-    <tr><td>attachment</td><td><code>attachment</code> in place of <code>message</code></td><td>95</td></tr>
-    <tr><td>bookkeeping</td><td><code>aiTitle</code>, <code>lastPrompt/leafUuid</code>, <code>operation</code>, file snapshots</td><td>101</td></tr>
-  </tbody>
-</table>
-
-<p>Inside an assistant record, <code>message.content</code> holds blocks. A <code>tool_use</code> block carries <code>type, id, name, input</code>. The matching result arrives in a later record as a <code>tool_result</code> block, with the raw payload beside it in <code>toolUseResult</code> and a back-pointer in <code>sourceToolAssistantUUID</code>. <code>message.usage</code> gives input, output, cache-read and cache-creation tokens per turn, so every decision point carries its own price.</p>
-
-<figure>
-<svg viewBox="0 0 820 250" role="img" aria-labelledby="d4t">
-  <title id="d4t">Pipeline from transcript to counterfactual dataset</title>
-  <rect x="0" y="40" width="128" height="62" rx="7" class="box"/>
-  <text x="14" y="66" class="svg-ink sans" font-size="12" font-weight="700">*.jsonl</text>
-  <text x="14" y="84" class="svg-ink3 sans" font-size="10.5">sessions on disk</text>
-  <path d="M130 71 L162 71" class="line" marker-end="url(#ar4)"/>
-
-  <rect x="164" y="30" width="146" height="82" rx="7" class="box"/>
-  <text x="178" y="54" class="svg-ink sans" font-size="12" font-weight="700">decision points</text>
-  <text x="178" y="72" class="svg-ink3 sans" font-size="10.5">each tool_use block,</text>
-  <text x="178" y="88" class="svg-ink3 sans" font-size="10.5">with the 6 turns before it</text>
-  <text x="178" y="104" class="svg-ink3 sans" font-size="10.5">and the result after</text>
-  <path d="M312 71 L344 71" class="line" marker-end="url(#ar4)"/>
-
-  <rect x="346" y="20" width="150" height="102" rx="7" class="box-acc"/>
-  <text x="360" y="44" class="svg-acc sans" font-size="12" font-weight="700">Jev, one call</text>
-  <text x="360" y="64" class="svg-ink2 mono" font-size="10.5">right_next_action</text>
-  <text x="360" y="80" class="svg-ink2 mono" font-size="10.5">enough_context</text>
-  <text x="360" y="96" class="svg-ink2 mono" font-size="10.5">destructive</text>
-  <text x="360" y="112" class="svg-ink2 mono" font-size="10.5">needs_verification</text>
-  <path d="M498 71 L530 71" class="line-acc" marker-end="url(#ara4)"/>
-
-  <rect x="532" y="30" width="140" height="82" rx="7" class="box"/>
-  <text x="546" y="54" class="svg-ink sans" font-size="12" font-weight="700">outcome label</text>
-  <text x="546" y="72" class="svg-ink3 sans" font-size="10.5">error in the result,</text>
-  <text x="546" y="88" class="svg-ink3 sans" font-size="10.5">user interrupt,</text>
-  <text x="546" y="104" class="svg-ink3 sans" font-size="10.5">same file edited again</text>
-  <path d="M674 71 L706 71" class="line" marker-end="url(#ar4)"/>
-
-  <rect x="708" y="40" width="112" height="62" rx="7" class="box"/>
-  <text x="722" y="66" class="svg-ink sans" font-size="12" font-weight="700">dataset</text>
-  <text x="722" y="84" class="svg-ink3 sans" font-size="10.5">one row per point</text>
-
-  <rect x="164" y="160" width="508" height="66" rx="7" class="box"/>
-  <text x="180" y="184" class="svg-acc2 sans" font-size="12" font-weight="700">Two things the dataset answers</text>
-  <text x="180" y="204" class="svg-ink2 sans" font-size="11.5">1. Is Jev calibrated here? Group rows by probability, compare against the outcome rate.</text>
-  <text x="180" y="220" class="svg-ink2 sans" font-size="11.5">2. Where Jev disagreed and the outcome was bad — that is the training set and the eval set.</text>
-  <path d="M418 122 L418 158" class="line" stroke-dasharray="4 4" marker-end="url(#ar4)"/>
-
-  <defs>
-    <marker id="ar4" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8 z" fill="var(--ink-3)"/></marker>
-    <marker id="ara4" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8 z" fill="var(--accent)"/></marker>
-  </defs>
-</svg>
-<figcaption>The transcript supplies both halves: the state before the decision, and what happened after it.</figcaption>
-</figure>
-
-<h3>The extractor</h3>
-
-<pre><code>import json, pathlib
-from collections import deque
-
-ROOT = pathlib.Path.home() / ".claude" / "projects"
-WINDOW = 6          # turns of context to carry into the state
-
-def records(path):
-    with path.open(encoding="utf-8") as fh:
-        for line in fh:
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                yield json.loads(line)
-            except json.JSONDecodeError:
-                continue          # snapshots and partial writes
-
-def text_of(msg):
-    out = []
-    for block in msg.get("content") or []:
-        if isinstance(block, dict) and block.get("type") == "text":
-            out.append(block["text"])
-    return "\n".join(out)
-
-def decision_points(path):
-    """Yield one dict per tool_use block, with context before and result after."""
-    context = deque(maxlen=WINDOW)
-    pending, rows = {}, []
-
-    for rec in records(path):
-        kind = rec.get("type")
-        msg = rec.get("message") or {}
-
-        if kind == "user" and isinstance(msg.get("content"), str):
-            context.append({"role": "user", "text": msg["content"]})
-
-        if kind == "assistant":
-            said = text_of(msg)
-            if said:
-                context.append({"role": "assistant", "text": said})
-            for block in msg.get("content") or []:
-                if block.get("type") != "tool_use":
-                    continue
-                row = {
-                    "session": rec.get("sessionId"),
-                    "uuid": rec.get("uuid"),
-                    "cwd": rec.get("cwd"),
-                    "branch": rec.get("gitBranch"),
-                    "ts": rec.get("timestamp"),
-                    "context": list(context),
-                    "tool": block["name"],
-                    "input": block.get("input", {}),
-                    "tokens": (msg.get("usage") or {}).get("output_tokens"),
-                }
-                pending[block["id"]] = row
-                rows.append(row)
-
-        for block in (msg.get("content") or []) if isinstance(msg.get("content"), list) else []:
-            if isinstance(block, dict) and block.get("type") == "tool_result":
-                row = pending.pop(block.get("tool_use_id"), None)
-                if row is not None:
-                    row["result"] = rec.get("toolUseResult")
-                    row["is_error"] = bool(block.get("is_error"))
-
-    return rows</code></pre>
-
-<h3>The labels, taken from the transcript itself</h3>
-
-<pre><code>INTERRUPT = "[Request interrupted"
-
-def label(row, later_rows):
-    if row.get("is_error"):
-        return "failed"
-    for nxt in later_rows[:3]:
-        for turn in nxt["context"]:
-            if turn["role"] == "user" and INTERRUPT in turn["text"]:
-                return "interrupted"
-    path = (row["input"] or {}).get("file_path")
-    if path and row["tool"] in {"Edit", "Write"}:
-        for nxt in later_rows[:6]:
-            if nxt["tool"] in {"Edit", "Write"} and (nxt["input"] or {}).get("file_path") == path:
-                return "reworked"          # it came back to the same file
-    return "clean"</code></pre>
-
-<p>Those four labels are crude. Each one comes from something that happened in the session rather than from a model's opinion. <code>failed</code> and <code>interrupted</code> are the ones to trust. <code>reworked</code> catches real thrash and also catches a planned second edit, so read fifty of them before you trust it.</p>
-
-<h3>The Jev call</h3>
-
-<pre><code>from typesafe_sdk import Choice, Noul, TypeSafeClient
-
-client = TypeSafeClient()
-MODEL = "jev-1.13.0"          # pin it; thresholds are tuned against a version
-
-def judge(row):
-    return client.system_one(
-        model=MODEL,
-        state={
-            "goal": next((t["text"] for t in reversed(row["context"])
-                          if t["role"] == "user"), ""),
-            "recent_turns": row["context"],
-            "proposed_tool": row["tool"],
-            "proposed_input": row["input"],
-            "repo": row["cwd"],
-        },
-        questions={
-            "right_next_action": Choice(
-                instructions="Given the goal and what has happened, what should the agent do next",
-                criteria={
-                    "read_more":  "Read or search more of the code before changing anything",
-                    "edit":       "Make the change; enough is known",
-                    "run_tests":  "Run the tests or the build to see the current state",
-                    "ask_user":   "Stop and ask; the request is ambiguous or the choice is theirs",
-                    "finish":     "The work is done and should be handed back",
-                },
-            ),
-            "enough_context": Noul(
-                instructions="The agent has read enough of the relevant files to make this change safely"),
-            "destructive": Noul(
-                instructions="This action can destroy work that is not recoverable from git"),
-            "needs_verification": Noul(
-                instructions="This change should be checked by a test or a build before the turn ends"),
-        },
-    ).answers
-
-def to_row(row, a):
-    return {
-        **{k: row[k] for k in ("session", "uuid", "tool", "ts", "branch")},
-        "actual": row["tool"],
-        "jev_action": a["right_next_action"].choice,
-        "jev_conf": a["right_next_action"].confidence,
-        "p_enough_context": a["enough_context"].noul,
-        "p_destructive": a["destructive"].noul,
-        "p_needs_verification": a["needs_verification"].noul,
-        "outcome": row["outcome"],
-    }</code></pre>
-
-<h3>What comes out</h3>
-
-<p>Before the rows mean anything, Jev's answer and the agent's action have to live in the same vocabulary. Map each real tool onto the same five buckets the question uses: <code>Read</code>, <code>Grep</code> and <code>Glob</code> become <code>read_more</code>; <code>Edit</code> and <code>Write</code> become <code>edit</code>; <code>Bash</code> running a test becomes <code>run_tests</code>. Once both sides speak the same five words, one pass over the corpus gives you two separate things.</p>
-
-<ol>
-  <li><b>A calibration curve on your own work.</b> Bucket <code>p_needs_verification</code> by tenths and compare each bucket against the share of rows labeled <code>failed</code>. If the 0.9 bucket fails 30% of the time, Jev is not calibrated for this task and no threshold will save you.</li>
-  <li><b>The disagreement set.</b> Rows where <code>jev_action != actual</code> and the outcome was <code>failed</code> or <code>interrupted</code>. That is the counterfactual file you were after: the state, what the agent did, what a second opinion said, and evidence the agent was wrong. It feeds an eval suite, a few-shot set, or a fine-tune.</li>
-</ol>
-
-<p>Cost check before you start. A decision point with six turns of context runs maybe 6,000 tokens. Ten thousand of them is 60 million tokens, which at $0.042 per million is <b>$2.52</b> for the whole corpus. The extraction takes longer than the inference.</p>
-
-<p>The live version follows from the offline one. Once the disagreement set shows where Jev is right and the agent is wrong, the same four questions go in a <code>PreToolUse</code> hook, the command Claude Code runs before every tool call: block when <code>p_destructive &gt; 0.8</code>, warn when <code>enough_context</code> is under 0.3. That is <a href="https://github.com/leepokai/jev-guard">jev-guard</a>, built on your own thresholds instead of somebody else's.</p>
-
-<div class="callout slot">
-  <p><b>SLOT FOR YOUR CONCRETE EXAMPLE.</b></p>
-  <p>Send me the session and the moment, and this section gets the real thing: the state as the model saw it, the tool it picked, the four Jev answers with their probabilities, what happened next, and the row it produces. One worked example carries an explainer further than the pipeline diagram does.</p>
-</div>
-</div>
-
-<h2 id="more">Four more ideas</h2>
-
-<ol>
-  <li><b>Tool selection for the MCP Gateway Registry.</b> A registry with hundreds of tools cannot put every schema in the context. One <code>Choice</code> over tool names with one-line criteria, run against the user's request, narrows it to five before the agent sees anything. The registry already holds the descriptions the criteria need.</li>
-  <li><b>Assignment feedback that arrives before the deadline.</b> For the Georgetown course, a rubric as five <code>Score</code> questions over a submitted notebook returns a provisional read in under a second per student. Publish the rubric criteria as the assignment spec and the students can run it themselves.</li>
-  <li><b>Log triage.</b> <a href="https://github.com/reachjalil/jevlogs">jevlogs</a> does this for OpenTelemetry: one noul per line for "this needs a human tonight". The same shape works for a CloudWatch stream in front of a pager.</li>
-  <li><b>Self-hosted A/B.</b> Stand up <a href="https://github.com/ekzhang/openjev-sglang">openjev-sglang</a> on a model you already serve, run the same question set through both it and Jev, and compare accuracy and cost per thousand decisions. Nobody has published that comparison, so whatever you measure is new information.</li>
-</ol>
-
-<h2 id="start">Twenty minutes to first answer</h2>
+<p>One dependency, one environment variable, one file. The script below reads a README and asks Jev five questions about it in a single call, using all three question types. None of it is pseudocode: copy it, run it, and the numbers come back from your key rather than from this page.</p>
 
 <pre><code>pip install typesafe-sdk
 export TYPESAFE_API_KEY="sk-..."</code></pre>
 
-<pre><code>from typesafe_sdk import Noul, TypeSafeClient
+<pre><code>"""readme_check.py - ask Jev five questions about a README.
 
-client = TypeSafeClient()
-r = client.system_one(
-    state=open("README.md").read(),
+    python readme_check.py                  # reads ./README.md
+    python readme_check.py path/to/README.md
+"""
+import pathlib, sys
+from typesafe_sdk import Choice, Noul, Score, TypeSafeClient
+
+path = pathlib.Path(sys.argv[1] if len(sys.argv) &gt; 1 else "README.md")
+if not path.exists():
+    sys.exit(f"no file at {path}")
+
+answers = TypeSafeClient().system_one(
+    model="jev-1.13.0",
+    state={"filename": path.name, "readme": path.read_text(encoding="utf-8")[:40000]},
     questions={
-        "has_install_steps": Noul(instructions="This document tells a reader how to install the project"),
-        "mentions_auth":     Noul(instructions="This document describes authentication"),
-        "is_stale":          Noul(instructions="This document refers to features that sound out of date"),
+        "audience": Choice(
+            instructions="Who is this README written for",
+            criteria={
+                "user":        "Someone who wants to install and use the thing",
+                "contributor": "Someone who wants to change the code",
+                "evaluator":   "Someone deciding whether to adopt it",
+            },
+        ),
+        "setup": Score(
+            instructions="How complete the setup instructions are",
+            criteria=[
+                "No install or setup steps at all",
+                "Steps exist but assume things they never state",
+                "A reader could follow them start to finish",
+            ],
+        ),
+        "has_example":   Noul(instructions="The document shows at least one worked example"),
+        "explains_auth": Noul(instructions="The document explains how to authenticate"),
+        "sounds_stale":  Noul(instructions="The document mentions versions or features that sound out of date"),
     },
-)
-for k, v in r.answers.items():
-    print(f"{k:20} {v.noul:.2f}")</code></pre>
+).answers
 
-<p>Run that against twenty READMEs you already know well, and read the numbers against what you know is in the files. You are not checking whether Jev is clever. You are checking the one claim everything else rests on: that when it says 0.9 it is right about nine times in ten, on your material rather than on TypeSafe's. Twenty documents costs a few cents and tells you more than any benchmark page will, because a benchmark page cannot know what your states look like.</p>
+print(path.name)
+print(f"  written for     {answers['audience'].choice:12} ({answers['audience'].confidence:.2f})")
+print(f"  setup steps     {answers['setup'].score:.1f} / 2")
+print(f"  worked example  {answers['has_example'].noul:.2f}")
+print(f"  auth explained  {answers['explains_auth'].noul:.2f}")
+print(f"  sounds stale    {answers['sounds_stale'].noul:.2f}")
+
+if answers["setup"].score &lt; 1 or answers["has_example"].noul &lt; 0.3:
+    print("\n  -&gt; worth a rewrite before anyone outside the team reads it")</code></pre>
+
+<p>Three things are worth noticing in those forty lines. The state is a dict with named fields rather than one blob of text. The README is truncated at 40,000 characters, because padding the state costs accuracy as well as money. And the model is pinned, so the thresholds you tune today still mean the same thing next month.</p>
+
+<p>Point it at twenty READMEs you already know well, and read the output against what is in the files. You are not testing whether Jev is clever. You are testing the one claim everything else on this page rests on: that when it says 0.9 it is right about nine times in ten, on your material rather than on TypeSafe's. Twenty documents cost a fraction of a cent and tell you more than any benchmark page can, because no benchmark page has seen your states.</p>
+
+<p>Two experiments follow from there, both in the same file. Add a sixth question and watch the wall-clock barely move, which is fan-out doing its work in front of you. Then change the model back to <code>jev-latest</code> and re-run the same twenty files, which shows you what the pin is protecting.</p>
 
 <h2>Sources</h2>
 <ul class="sources">
@@ -891,7 +689,6 @@ for k, v in r.answers.items():
   <li><a href="https://github.com/cobanov/awesome-jev">cobanov/awesome-jev</a> — the project list</li>
   <li><a href="https://github.com/typesafe-ai/typesafe-sdk-python">typesafe-sdk-python</a> · <a href="https://github.com/typesafe-ai/typesafe-sdk-js">typesafe-sdk-js</a> — official SDKs</li>
   <li><a href="https://www.infoworld.com/article/4223468/typesafe-ais-new-models-work-with-machines-not-humans.html">InfoWorld</a> · <a href="https://www.heise.de/en/news/AI-model-Jev-to-make-machines-decide-faster-11457071.html">heise</a> — press coverage</li>
-  <li>Transcript record shapes: sampled from <code>%USERPROFILE%\.claude\projects\c--Users-aroraai-Downloads-my-work-SFDC\395c0861-….jsonl</code>, 19 September 2026</li>
 </ul>
 
 </div>
