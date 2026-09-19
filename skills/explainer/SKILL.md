@@ -4,7 +4,7 @@ description: Build a self-contained HTML explainer for a technical topic - what 
 license: MIT-0
 metadata:
   author: aarora79
-  version: "1.1"
+  version: "1.3"
 ---
 
 # Explainer
@@ -63,7 +63,7 @@ This is the part that separates an explainer from a summary. Hold all of it.
 
 A summary states what is true. An explainer shows why it is true and why the reader should care. The difference is visible sentence by sentence. Read a paragraph and mark each sentence **A** for assertion or **E** for explanation. A paragraph of all A's is a summary wearing an explainer's heading, and it is the failure this skill exists to prevent.
 
-Seven habits produce the E sentences:
+Eight habits produce the E sentences:
 
 1. **Every claim that matters gets a because.** "Jev returns typed answers" is an assertion. "Jev returns typed answers, so the parse step and the retry that guards it both disappear from your code" explains.
 2. **Lead with the problem, then the thing.** The reader should feel the pain a paragraph before they meet the fix. A reader who has not felt the problem has no place to put the solution.
@@ -72,6 +72,7 @@ Seven habits produce the E sentences:
 5. **Give the mechanism an analogy, then say where the analogy breaks.** An analogy nobody bounds turns into a wrong mental model that the reader keeps for years.
 6. **Walk one example end to end before you generalize.** Real values, in order, with the intermediate state shown. The general rule lands once the reader has watched it happen once.
 7. **Length follows difficulty, not importance.** Three sentences for the idea they will trip over, one for the idea they will not. A section that is important and obvious stays short.
+8. **Never flag significance.** "This matters more than it looks" is an assertion about importance, which is the weakest assertion there is: the reader has no way to check it and no reason to believe it. Replace the flag with the consequence — what breaks, what it costs, what you no longer have to write. If you cannot name the consequence, the sentence was decoration and it goes.
 
 ### Which writing-skill rules bend here
 
@@ -104,6 +105,10 @@ Not every explainer needs every section. It needs them in this order.
 | Build ideas | The section the reader came for. Ground each in something they already own. |
 | Twenty minutes to first answer | Install, key, one script, one check they can run. |
 | Sources | Every URL, plus anything you sampled from a local file, with the date. |
+
+**Sources go last, every time.** Link inline where a claim needs its source, and keep the
+full list at the end so the page closes on its evidence. A reader who wants to check you
+should find everything in one place without scrolling back through the argument.
 
 ## Step 4 - diagrams
 
@@ -152,13 +157,14 @@ Hold the prose to the measure and let the wide things break out of it:
   width: min(100%, var(--wide)); justify-self: center; }
 ```
 
-Six rules for the file itself:
+Seven rules for the file itself:
 
 - **One file.** CSS inline in a `<style>` block, images as `data:` URIs, no JavaScript unless the page teaches something only interaction can teach.
 - **Fonts.** A Google Fonts `<link>` plus the fallback stack above is enough for a page that lives online. For a page that has to work offline or behind a proxy, pull woff2 from npm (`npm pack @fontsource/inter @fontsource/jetbrains-mono`) and base64-inline them.
 - **Both themes.** `prefers-color-scheme` with a `[data-theme]` override, and an explicit `background` on `body`.
 - **Phone width.** 16px gutter, no horizontal page scroll, tables allowed to scroll inside their own box.
 - **Print.** A small `@media print` block: 11pt body, `break-inside: avoid` on figures, code and tables.
+- **Every code block carries a copy control.** A reader who wants to run your example should not have to select it by hand. A button in the top-right corner of each block, showing a clipboard icon and the word Copy, flipping to Copied for a second after a click. This is the page's only JavaScript: about thirty lines, no dependencies, `navigator.clipboard.writeText` with a hidden-textarea fallback for browsers that refuse it. With JavaScript off the code is still there and still selectable.
 - **A table of contents** once the page passes six sections.
 
 ## Step 6 - verify before you ship
@@ -201,6 +207,29 @@ print(pg.evaluate("""() => {
 }"""))
 ```
 
+## Step 7 - read it once more, top to bottom
+
+Every check so far looks at one sentence or one number. This one looks at the whole page,
+and it is the last thing you do before shipping.
+
+Read it as the reader would, start to finish, in one sitting. Three questions:
+
+- **Does it flow?** Each section should follow from the one before it. A section you have
+  to re-read to work out why it is there belongs somewhere else, or nowhere.
+- **Does anything repeat?** By now you have written the same idea twice in two places
+  without noticing. Keep the better one. A worked example that demonstrates a rule beats
+  the sentence that stated it, so cut the sentence.
+- **Has anything stopped earning its place?** A paragraph that was load-bearing in the
+  first draft is often dead weight once the rest arrived. Cut it, even though it took an
+  hour to write.
+
+The test for every paragraph: the reader is giving you their attention and you asked for
+it, so what are they getting back for this one?
+
+Expect to cut. On the page this pass was written for, it removed a 33-line code block
+that duplicated the worked example, four sentences that a later section said better, and
+a caption that repeated the paragraph above it.
+
 ## Ship it
 
 - Write to `explainers/<topic>-explainer.html`, beside the repo it explains when there is one.
@@ -215,5 +244,8 @@ print(pg.evaluate("""() => {
 - Do not present a vendor's self-scored benchmark as measured fact.
 - Do not write a section whose only job is to introduce the next one.
 - Do not ship a section that is all assertion. A reader who did not already know the subject has to learn why, not only what.
+- Do not stage the next sentence. No "now look at", no "here is the thing", no applause line at the end of a section.
+- Do not tell the reader a fact is important. Show the consequence and let them decide.
+- Do not ship without the final read-through. The draft you stop editing is not the draft that reads best.
 - Do not add a diagram that repeats what the paragraph above it already said.
 - Do not pad to length. A page that earns 1,200 words should be 1,200 words.

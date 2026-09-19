@@ -101,6 +101,20 @@
   }
   pre code { background: none; padding: 0; font-size: inherit; }
 
+  .codewrap { position: relative; margin: 0 0 22px; }
+  .codewrap > pre { margin: 0; }
+  .copy-btn {
+    position: absolute; top: 10px; right: 10px;
+    display: inline-flex; align-items: center; gap: 6px;
+    font: 500 12.5px/1 var(--sans); color: var(--ink-3);
+    background: var(--bg); border: 1px solid var(--rule); border-radius: 6px;
+    padding: 6px 9px; cursor: pointer; opacity: 0; transition: opacity .12s, color .12s, border-color .12s;
+  }
+  .codewrap:hover .copy-btn, .copy-btn:focus-visible { opacity: 1; }
+  .copy-btn:hover, .copy-btn.done { color: var(--accent); border-color: var(--accent); opacity: 1; }
+  @media (hover: none) { .copy-btn { opacity: 1; } }
+  @media print { .copy-btn { display: none; } }
+
   .num-strip {
     display: grid; grid-template-columns: repeat(auto-fit, minmax(155px, 1fr));
     gap: 1px; background: var(--rule); border: 1px solid var(--rule);
@@ -179,7 +193,7 @@
 
 <header class="top">
   <h1>Jev: a model that decides instead of writing</h1>
-  <p class="standfirst">TypeSafe AI shipped a model that answers typed questions in about a tenth of a second and never returns prose. This covers how it works, where it breaks, and a forty-line script you can run against your own files in the next twenty minutes.</p>
+  <p class="standfirst">TypeSafe AI shipped a model that answers typed questions in about a tenth of a second and never returns prose. This covers how it works, where it breaks, and a script you can run against your own files in the next twenty minutes.</p>
   <p class="byline">Written 19 September 2026 · all numbers dated and attributed · code samples in Python</p>
 </header>
 
@@ -201,13 +215,13 @@
 
 <p>Think about what your code asks a language model to do most of the day. Rarely "write me an essay". Far more often: is this ticket about billing? Is this diff risky? Should I read more of the file before I edit it? Each one is a decision with a small set of answers, and you know the answers before you ask: billing, technical or sales; risky or not.</p>
 
-<p>Now look at the machinery it takes to get one. You write a prompt, the model writes a paragraph or a JSON blob back, and your code parses it, checks that the parse worked, and handles the case where it did not. You are asking a machine that produces text to make a choice, then turning the text back into the choice you wanted. The text in the middle is overhead, and you pay for it twice: in tokens, and in the seconds somebody spends waiting.</p>
+<p>Getting one of those answers takes more machinery than the question deserves. You write a prompt, the model writes a paragraph or a JSON blob back, and your code parses it, checks that the parse worked, and handles the case where it did not. You are asking a machine that produces text to make a choice, then turning the text back into the choice you wanted. The text in the middle is overhead, and you pay for it twice: in tokens, and in the seconds somebody spends waiting.</p>
 
 <p>Jev deletes the middle. You hand it <b>state</b>, meaning whatever your program already holds: the ticket, the file, the last six turns of a conversation. With the state you send a list of questions, each one carrying its possible answers written out in advance. What comes back is the answers, with no sentence wrapped around them, nothing to parse and nothing to retry.</p>
 
 <p>TypeSafe calls this a <b>System One model</b>, after Daniel Kahneman's name for fast, automatic thinking: the judgment you reach without deliberating, the way you read a face as angry before you could explain how you knew. Kahneman's System Two is the slow, effortful kind you use on long division or a legal argument. A frontier LLM does System Two work, and you can talk it into doing System One work badly. Jev does one of those jobs and refuses the other.</p>
 
-<p>The company's own line for it: <em>"a frontier-intelligence function call: unstructured state in, typed probabilistic decisions out."</em> Take that as a promise about the call shape rather than a boast. You already know how to call a function, branch on what it returns and write a test for it. That is the whole interface.</p>
+<p>The company's own line for it: <em>"a frontier-intelligence function call: unstructured state in, typed probabilistic decisions out."</em> Take that as a promise about the call shape rather than a boast. You already know how to call a function, branch on what it returns and write a test for it. The API asks nothing else of you.</p>
 
 <div class="num-strip">
   <div class="num"><b>70–500 ms</b><span>End to end. Most calls land near 100 ms, per TypeSafe.</span></div>
@@ -302,13 +316,13 @@
 
 <h2 id="how">How it answers ten questions in the time an LLM writes one word</h2>
 
-<p>Three design choices produce that speed. Each one also costs something, and the cost is the part worth knowing before you build on it.</p>
+<p>Three design choices produce that speed. Each one also costs something.</p>
 
-<p><b>The architecture is non-autoregressive.</b> Jev produces all of its outputs from a single pass instead of feeding each token back in, which is exactly the loop it removes. TypeSafe describes it as parallel sampling that is hardware-aware. You feel the difference when you add questions: Jev scores every question in a request against the same state, none of them sees another's answer, so the model can work on all of them at once. TypeSafe says it found no batching penalty past normal sampling noise, which in practice means a request carrying twelve questions costs the tokens of twelve and about the wall-clock of one. The price of that design is that questions cannot build on each other. If question B needs the answer to question A, you are making two calls, and the round trip you saved comes straight back.</p>
+<p><b>The architecture is non-autoregressive.</b> Jev produces all of its outputs from a single pass instead of feeding each token back in, which is exactly the loop it removes. TypeSafe describes it as parallel sampling that is hardware-aware. Jev scores every question in a request against the same state, none of them sees another's answer, so the model works on all of them at once. TypeSafe says it found no batching penalty past normal sampling noise, which means a request carrying twelve questions costs the tokens of twelve and about the wall-clock of one. The price of that design is that questions cannot build on each other. If question B needs the answer to question A, you are making two calls, and the round trip you saved comes straight back.</p>
 
-<p><b>You fix the output space in advance.</b> You list the options before the call, so the model chooses among your strings rather than inventing one of its own, and it reports how the probability mass fell across them. This is why the 0% type-error rate is structural rather than measured: a malformed answer has nowhere to live, because no free-form text exists for it to live in. Be precise about what that buys. You will never write a retry for a broken parse again. You have learned nothing about whether the answer is <em>right</em>, and a confidently wrong answer arrives in the same well-formed shape as a correct one.</p>
+<p><b>You fix the output space in advance.</b> You list the options before the call, so the model chooses among your strings rather than inventing one of its own, and it reports how the probability mass fell across them. This is why the 0% type-error rate is structural rather than measured: a malformed answer has nowhere to live, because no free-form text exists for it to live in. You will never write a retry for a broken parse again. You have learned nothing about whether the answer is <em>right</em>, and a confidently wrong answer arrives in the same well-formed shape as a correct one.</p>
 
-<p><b>Training targeted calibration</b>, which means the probability the model states matches how often that answer turns out right. TypeSafe trained Jev with Reinforcement Learning for Calibrated Decisions, which rewards that match rather than rewarding a helpful-sounding reply. In plain terms: take every answer the model marked 0.9, and about nine in ten of them should be correct. That property lets you put the number inside an <code>if</code> statement, and that claim is the one worth testing yourself, because every gate and threshold you build on Jev inherits it. The number you test is <b>confidence</b>, the share of the probability mass sitting on the answer the model picked. A choice among five options that comes back at 0.91 leaves the other four splitting 0.09 between them.</p>
+<p><b>Training targeted calibration</b>, which means the probability the model states matches how often that answer turns out right. TypeSafe trained Jev with Reinforcement Learning for Calibrated Decisions, which rewards that match rather than rewarding a helpful-sounding reply. In plain terms: take every answer the model marked 0.9, and about nine in ten of them should be correct. That property lets you put the number inside an <code>if</code> statement, and that claim is the one worth testing yourself, because every gate and threshold you build on Jev inherits it. The number you test is <b>confidence</b>, the share of the probability mass sitting on the answer the model picked.</p>
 
 <div class="callout">
   <p><b>THE OPEN REPRODUCTION TELLS YOU MORE THAN THE BLOG POST.</b></p>
@@ -317,9 +331,7 @@
 
 <h2 id="example">One call, start to finish</h2>
 
-<p>Here is a whole call, with real state and one question of each type, small enough to read in a minute.</p>
-
-<p>A support ticket arrives. Three things have to happen to it: it goes to a team, somebody decides how urgently, and the billing system may need to cut a refund. Three decisions over one piece of text, which is the shape Jev is built for.</p>
+<p>A support ticket arrives. Three things have to happen to it: it goes to a team, somebody decides how urgently, and the billing system may need to cut a refund. Three decisions over one piece of text, and one call can carry all three.</p>
 
 <pre><code>from typesafe_sdk import Choice, Noul, Score, TypeSafeClient
 
@@ -374,11 +386,11 @@ answers["wants_refund"].noul     # 0.97</code></pre>
 <ul>
   <li><code>team.choice</code> is one of the three strings you listed and cannot be anything else, so the next line of your code switches on it without a branch for surprises.</li>
   <li><code>team.probabilities</code> shows where the rest of the mass went. At 0.94 against 0.04 and 0.02 the model was not torn. A ticket that came back 0.51 billing and 0.47 technical is the one you want a human to look at, and the distribution is the only place that shows up.</li>
-  <li><code>anger.score</code> is 1.4 on the three-level rubric you wrote, which is numbered 0, 1 and 2 in the order you gave them. It sits between "frustrated but civil" and "furious", which tells you more than either label alone. Scores landing between levels are normal, so treat the rubric as a ruler rather than three boxes.</li>
+  <li><code>anger.score</code> is 1.4 on the three-level rubric you wrote, whose levels count 0, 1 and 2 in the order you listed them. It sits between "frustrated but civil" and "furious", which tells you more than either label alone. Scores landing between levels are normal, so treat the rubric as a ruler rather than three boxes.</li>
   <li><code>wants_refund.noul</code> is 0.97, a probability rather than a yes. A noul carries no separate confidence field, because the number already is the confidence.</li>
 </ul>
 
-<p>Now the part that pays for the call. All of it is ordinary Python, and none of it parses anything.</p>
+<p>The code that acts on those answers is ordinary Python, and none of it parses anything.</p>
 
 <pre><code>team = answers["team"]
 if team.confidence &lt; 0.6:
@@ -394,11 +406,11 @@ if answers["wants_refund"].noul &gt; 0.9:
 
 <p>Three thresholds at three different heights, each written next to the action it guards. Sending money needs 0.9; putting a ticket in a queue needs 0.6; nothing needs a retry loop or a schema validator.</p>
 
-<p>What it cost: the ticket runs about 60 tokens and the questions with their criteria maybe 120 more. At $0.042 per million input tokens, those 180 tokens come to $0.0000076, and the answers land in roughly a tenth of a second. Those two numbers are why the patterns further down are worth the trouble.</p>
+<p>What it cost: the ticket runs about 60 tokens and the questions with their criteria maybe 120 more. At $0.042 per million input tokens, those 180 tokens come to $0.0000076, and the answers land in roughly a tenth of a second.</p>
 
 <h2 id="primitives">The three primitives</h2>
 
-<p>Every question you can ask is one of three types, and the type you pick is a claim about the shape of the answer. Pick the wrong shape and you fight it later: a yes-or-no judgment forced into a five-option choice throws away the single number you wanted. You mix all three types in one request. Each answer carries its probability distribution and its confidence.</p>
+<p>Every question you can ask is one of three types, and the type you pick is a claim about the shape of the answer. Pick the wrong shape and you fight it later: a yes-or-no judgment forced into a five-option choice throws away the single number you wanted. Each answer carries its probability distribution and its confidence.</p>
 
 <table>
   <thead><tr><th>Type</th><th>Asks</th><th>Returns</th></tr></thead>
@@ -421,47 +433,13 @@ if answers["wants_refund"].noul &gt; 0.9:
   </tbody>
 </table>
 
-<pre><code>from typesafe_sdk import Choice, Noul, Score, TypeSafeClient
-
-client = TypeSafeClient()          # reads TYPESAFE_API_KEY, defaults to jev-latest
-
-response = client.system_one(
-    state={
-        "ticket": {
-            "subject": "Duplicate charge",
-            "messages": [
-                {"from": "customer",
-                 "text": "I was charged twice for order A-104. Please refund the duplicate."},
-            ],
-        },
-    },
-    questions={
-        "department": Choice(
-            instructions="Which team should handle this",
-            criteria={"billing": "Payment issues",
-                      "technical": "Bugs or integration problems",
-                      "sales": "Pricing questions"},
-        ),
-        "frustration": Score(
-            instructions="How frustrated the customer appears",
-            criteria=["Calm", "Frustrated but civil", "Very angry"],
-        ),
-        "refund_requested": Noul(
-            instructions="The customer is explicitly asking for a refund",
-        ),
-    },
-)
-
-dept = response.answers["department"]
-print(dept.choice, dept.confidence)</code></pre>
-
 <p>Two rules govern how you write the questions, and breaking the first causes most of the trouble. Keep each question atomic, so that it asks about exactly one thing. "Is this ticket urgent and about billing?" has no honest answer when the ticket is urgent and about something else; the model picks one half of your question for you and never says which half it picked. Ask the two questions separately. The second rule follows: when a judgment has several parts, keep the weighting in your own code rather than inside the wording of one question, where you can read it in a diff and change it without retraining anything.</p>
 
 <h2 id="api">The request and the response</h2>
 
 <p>One endpoint does everything: <code>POST https://api.typesafe.ai/v1/systemone</code>. The body holds <code>state</code>, <code>model</code> and <code>questions</code>. The response holds <code>model</code>, <code>answers</code> keyed by the ids you chose for your questions, and <code>usage</code>. No session, no thread, no conversation history to manage, because nothing carries over from one call to the next. Every call is a function call with its arguments in front of it.</p>
 
-<p>State can be a string, an object, or an array, and the choice matters more than it looks. Use an object. Named fields tell the model what each part of the state is, so <code>{"ticket": …, "customer_history": …}</code> reads differently from the same two blocks of text glued together, where the model has to guess where one ends. Named fields also let you diff one state against another once you start logging every call, which is what you will want the first hour an answer surprises you.</p>
+<p>State can be a string, an object, or an array. Use an object. Named fields tell the model what each part of the state is, so <code>{"ticket": …, "customer_history": …}</code> reads differently from the same two blocks of text glued together, where the model has to guess where one ends. Named fields also let you diff one state against another once you start logging every call, which is what you will want the first hour an answer surprises you.</p>
 
 <figure>
 <svg viewBox="0 0 820 300" role="img" aria-labelledby="d2t">
@@ -513,7 +491,7 @@ print(dept.choice, dept.confidence)</code></pre>
 <h2 id="patterns">Five patterns that hold up</h2>
 
 <h3>1. Fan out</h3>
-<p>Ask for everything you might want in one request, including the signals you do not need yet. TypeSafe batched 13 questions against a 53,777-character document and measured it at 12.2× cheaper and 10× faster than 13 separate calls. The reason is the state rather than the questions: sending 53,777 characters once and asking thirteen things beats sending it thirteen times. So the habit to build is to ask for the signal you might want later while the state is already in flight. A fourteenth question costs its own tokens and close to no time.</p>
+<p>Ask for everything you might want in one request, including the signals you do not need yet. TypeSafe batched 13 questions against a 53,777-character document and measured it at 12.2× cheaper and 10× faster than 13 separate calls. The reason is the state rather than the questions: sending 53,777 characters once and asking thirteen things beats sending it thirteen times. A fourteenth question costs its own tokens and close to no time.</p>
 
 <h3>2. Gate on confidence, and set a different gate per action</h3>
 <p>The cost of being wrong differs by action, so a single threshold set once for a whole system is wrong nearly everywhere it applies. Showing an account balance to the person who owns the account can run at 0.5, because a wrong answer costs a puzzled user and one more click. Moving money at 0.5 is indefensible. Put the bar where the consequence is, and write the number beside the action it guards rather than in a settings file three directories away.</p>
@@ -551,7 +529,7 @@ elif action.choice == "approve_transfer":
   <text x="600" y="152" class="svg-ink sans" font-size="13" font-weight="700">act</text>
   <text x="330" y="170" class="svg-ink3 sans" font-size="11.5">a read-only action can start at 0.5; deleting a table should not</text>
 </svg>
-<figcaption>Put the gate where the consequence is, then log every call that fell in the middle band. That log is your threshold-tuning set.</figcaption>
+<figcaption>The middle band is the interesting one. Log every call that lands there, and that log becomes the set you tune the thresholds against.</figcaption>
 </figure>
 
 <h3>3. Composite scoring</h3>
@@ -563,10 +541,10 @@ elif action.choice == "approve_transfer":
     0.35 * (response.answers["system_design"].score / 4)
 )</code></pre>
 
-<p>The weights live in your repo, under review, in a diff. Changing how much system design counts takes a pull request rather than a prompt rewrite.</p>
+<p>The weights then live in a diff, so changing how much system design counts takes a pull request rather than a prompt rewrite.</p>
 
 <h3>4. Cascade</h3>
-<p>Jev routes. Plain code handles the easy cases and a frontier model takes the rest. Watch what this does to the bill: the expensive model only sees the requests that need it, and in most systems those are a small share of the traffic. The routing decision costs a fraction of a cent and happens before anything expensive starts.</p>
+<p>Jev routes. Plain code handles the easy cases and a frontier model takes the rest. The expensive model then only sees the requests that need it, and in most systems those are a small share of the traffic. The routing decision costs a fraction of a cent and happens before anything expensive starts.</p>
 
 <pre><code>if intent.confidence &lt; 0.5:
     return route_to_human(message)
@@ -583,7 +561,7 @@ elif intent.choice == "complaint":
 
 <h2 id="cannot">What it gets wrong</h2>
 
-<p>TypeSafe publishes its own failure modes, which is more than most model cards do. Read the list as a map of where to put code instead of a model. Almost every item below has the same workaround: do that part in Python, and ask Jev only for the judgment that Python cannot make.</p>
+<p>TypeSafe publishes its own failure modes, which is more than most model cards do. Almost every item below has the same workaround: do that part in Python, and ask Jev only for the judgment Python cannot make.</p>
 
 <ul>
   <li><b>It cannot count.</b> Characters in a word, occurrences of a term, items in a list: all unreliable.</li>
@@ -616,7 +594,7 @@ elif intent.choice == "complaint":
   </tbody>
 </table>
 
-<p>LangChain shipped <code>langchain-typesafe</code> with two middlewares that land close to our work: <code>ModelRouterMiddleware</code>, which picks a model per request from criteria you write, and <code>AutoModeMiddleware</code>, which blocks risky tool calls before they run.</p>
+<p>LangChain shipped <code>langchain-typesafe</code> with two middlewares worth reading before you write your own: <code>ModelRouterMiddleware</code>, which picks a model per request from criteria you write, and <code>AutoModeMiddleware</code>, which blocks risky tool calls before they run.</p>
 
 <h2 id="start">Run it yourself</h2>
 
@@ -673,7 +651,7 @@ print(f"  sounds stale    {answers['sounds_stale'].noul:.2f}")
 if answers["setup"].score &lt; 1 or answers["has_example"].noul &lt; 0.3:
     print("\n  -&gt; worth a rewrite before anyone outside the team reads it")</code></pre>
 
-<p>Three things are worth noticing in those forty lines. The state is a dict with named fields rather than one blob of text. The README is truncated at 40,000 characters, because padding the state costs accuracy as well as money. And the model is pinned, so the thresholds you tune today still mean the same thing next month.</p>
+<p>The state is a dict with named fields rather than one blob of text. The script truncates the README at 40,000 characters, because padding the state costs accuracy as well as money. The model is pinned, so the thresholds you tune today still mean the same thing next month.</p>
 
 <p>Point it at twenty READMEs you already know well, and read the output against what is in the files. You are not testing whether Jev is clever. You are testing the one claim everything else on this page rests on: that when it says 0.9 it is right about nine times in ten, on your material rather than on TypeSafe's. Twenty documents cost a fraction of a cent and tell you more than any benchmark page can, because no benchmark page has seen your states.</p>
 
@@ -692,5 +670,51 @@ if answers["setup"].score &lt; 1 or answers["has_example"].noul &lt; 0.3:
 </ul>
 
 </div>
+<script>
+document.querySelectorAll('pre').forEach(function (pre) {
+  var wrap = document.createElement('div');
+  wrap.className = 'codewrap';
+  pre.parentNode.insertBefore(wrap, pre);
+  wrap.appendChild(pre);
+
+  var btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'copy-btn';
+  btn.setAttribute('aria-label', 'Copy this code to the clipboard');
+  var icon = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+             'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+             '<rect x="9" y="9" width="13" height="13" rx="2"/>' +
+             '<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+  btn.innerHTML = icon + '<span>Copy</span>';
+  wrap.appendChild(btn);
+
+  btn.addEventListener('click', function () {
+    var text = pre.innerText;
+    function done() {
+      btn.querySelector('span').textContent = 'Copied';
+      btn.classList.add('done');
+      setTimeout(function () {
+        btn.querySelector('span').textContent = 'Copy';
+        btn.classList.remove('done');
+      }, 1400);
+    }
+    function fallback() {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand('copy'); done(); } catch (e) {}
+      ta.remove();
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done, fallback);
+    } else {
+      fallback();
+    }
+  });
+});
+</script>
 </body>
 </html>
