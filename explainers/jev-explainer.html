@@ -613,8 +613,10 @@ import pathlib, sys, urllib.request
 from typesafe_sdk import Choice, Noul, Score, TypeSafeClient
 
 def load(target):
-    """Return (name, text) for a local path or an http(s) URL."""
-    if not target.startswith(("http://", "https://")):
+    """Return (name, text) for a local path or an https URL."""
+    if target.startswith("http://"):
+        sys.exit("https only - point it at the https:// URL instead")
+    if not target.startswith("https://"):
         path = pathlib.Path(target)
         if not path.exists():
             sys.exit(f"no file at {path}")
@@ -666,7 +668,7 @@ print(f"  sounds stale    {answers['sounds_stale'].noul:.2f}")
 if answers["setup"].score &lt; 1 or answers["has_example"].noul &lt; 0.3:
     print("\n  -&gt; worth a rewrite before anyone outside the team reads it")</code></pre>
 
-<p><code>load()</code> takes a local path or a URL and works out which it has from the <code>http://</code> or <code>https://</code> prefix. A GitHub file page and a bare repo URL both get rewritten to their raw form, so <code>python readme_check.py https://github.com/psf/requests</code> reads that project's README without you hunting for the raw link. The fetch uses <code>urllib</code> from the standard library, which keeps the dependency count at one.</p>
+<p><code>load()</code> takes a local path or a URL and works out which it has from the <code>https://</code> prefix. A plain <code>http://</code> URL stops with a message rather than fetching your README in the clear. A GitHub file page and a bare repo URL both get rewritten to their raw form, so <code>python readme_check.py https://github.com/psf/requests</code> reads that project's README without you hunting for the raw link. The fetch uses <code>urllib</code> from the standard library, which keeps the dependency count at one.</p>
 
 <p>The state is a dict with named fields rather than one blob of text. The script truncates the README at 40,000 characters, because padding the state costs accuracy as well as money. The model is pinned, so the thresholds you tune today still mean the same thing next month.</p>
 

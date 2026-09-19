@@ -166,10 +166,11 @@ Eight rules for the file itself:
 - **Print.** A small `@media print` block: 11pt body, `break-inside: avoid` on figures, code and tables.
 - **Every code block carries a copy control.** A reader who wants to run your example should not have to select it by hand. A button in the top-right corner of each block, showing a clipboard icon and the word Copy, flipping to Copied for a second after a click. This is the page's only JavaScript: about thirty lines, no dependencies, `navigator.clipboard.writeText` with a hidden-textarea fallback for browsers that refuse it. With JavaScript off the code is still there and still selectable.
 - **A script the reader is meant to run takes its input as an argument**, and accepts both a
-  local path and an `http://` or `https://` URL, working out which it has from the prefix.
-  Fetch the URL with the standard library rather than adding a dependency, and rewrite the
-  obvious host-specific forms — a GitHub file page and a bare repo URL both have a raw
-  equivalent — so the reader can paste the link they already have.
+  local path and an `https://` URL, working out which it has from the prefix. Refuse plain
+  `http://` with a message rather than fetching in the clear. Fetch with the standard library
+  rather than adding a dependency, and rewrite the obvious host-specific forms — a GitHub file
+  page and a bare repo URL both have a raw equivalent — so the reader can paste the link they
+  already have.
 - **A table of contents** once the page passes six sections.
 
 ### The markdown twin
