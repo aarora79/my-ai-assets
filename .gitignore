@@ -2,3 +2,6 @@
 prompts/stock-portfolio-damodaran/*
 !prompts/stock-portfolio-damodaran/template.txt
 !prompts/stock-portfolio-damodaran/portfolio-analysis-template.txt
+
+# local scratch notes, never committed
+.scratchpad/

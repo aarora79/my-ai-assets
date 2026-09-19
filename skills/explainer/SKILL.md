@@ -4,20 +4,20 @@ description: Build a self-contained HTML explainer for a technical topic - what 
 license: MIT-0
 metadata:
   author: aarora79
-  version: "1.0"
+  version: "1.5"
 ---
 
 # Explainer
 
 Write the page a smart colleague needs to understand a thing they have never met, and to start building with it the same afternoon.
 
-The output is one HTML file: no build step, no second file, no server. A reader opens it, scrolls once, and knows what the thing is, how it works, where it breaks, and what to try first.
+The output is a folder: an HTML page, its markdown twin, and a printable poster. The page is what people read, and it needs no build step and no server. The markdown is what survives a repo, a diff, a pull request comment and a terminal. A reader opens either one, scrolls once, and knows what the thing is, how it works, where it breaks, and what to try first.
 
 ## Two skills, not one
 
 Write every sentence under the `writing` skill in this repo (`skills/writing/`). Load it before you draft. It governs the prose: Orwell's six rules, the ban lists, the sentence-shape tells, the revision pass.
 
-This skill adds what teaching needs on top: the order ideas arrive in, and the rule that no term appears before its definition.
+This skill adds what teaching needs on top: the order ideas arrive in, the rule that no term appears before its definition, and the habits that turn an assertion into an explanation. It also names which of the writing skill's compression rules bend when the reader is learning the subject rather than catching up on it.
 
 ## Inputs
 
@@ -26,7 +26,7 @@ This skill adds what teaching needs on top: the order ideas arrive in, and the r
 | Topic | yes | A model, a protocol, a library, a paper, a system in your own codebase. |
 | Audience | no | Default: an engineer who is strong elsewhere and new here. |
 | Code language | no | Default: the language the reader will use it from. Pick one and stay in it. |
-| Output path | no | Default `explainers/<topic>-explainer.html` in the repo you are working in. |
+| Output path | no | Default `explainers/<topic>/` in the repo you are working in. |
 
 ## Step 0 - ask three questions, then commit
 
@@ -59,6 +59,35 @@ This is the part that separates an explainer from a summary. Hold all of it.
 
 **ELI5 means the order concepts arrive in, not baby talk.** Do not water the engineering down, do not round the numbers off, and do not swap the exact term for a vague one. Define `idempotent` and then use `idempotent`.
 
+### Explain, do not assert
+
+A summary states what is true. An explainer shows why it is true and why the reader should care. The difference is visible sentence by sentence. Read a paragraph and mark each sentence **A** for assertion or **E** for explanation. A paragraph of all A's is a summary wearing an explainer's heading, and it is the failure this skill exists to prevent.
+
+Eight habits produce the E sentences:
+
+1. **Every claim that matters gets a because.** "Jev returns typed answers" is an assertion. "Jev returns typed answers, so the parse step and the retry that guards it both disappear from your code" explains.
+2. **Lead with the problem, then the thing.** The reader should feel the pain a paragraph before they meet the fix. A reader who has not felt the problem has no place to put the solution.
+3. **Answer the question the reader is about to ask.** Read the draft as somebody who does not already agree. Wherever they would say "wait, why" or "so what", the answer belongs in the next sentence, not three sections later.
+4. **Say the hard idea twice: once in the domain's words, once in ordinary ones.** This is the one place repetition earns its keep. "Calibrated" and "when it says 0.9 it is right about nine times in ten" are the same sentence for two different readers.
+5. **Give the mechanism an analogy, then say where the analogy breaks.** An analogy nobody bounds turns into a wrong mental model that the reader keeps for years.
+6. **Walk one example end to end before you generalize.** Real values, in order, with the intermediate state shown. The general rule lands once the reader has watched it happen once.
+7. **Length follows difficulty, not importance.** Three sentences for the idea they will trip over, one for the idea they will not. A section that is important and obvious stays short.
+8. **Never flag significance.** "This matters more than it looks" is an assertion about importance, which is the weakest assertion there is: the reader has no way to check it and no reason to believe it. Replace the flag with the consequence — what breaks, what it costs, what you no longer have to write. If you cannot name the consequence, the sentence was decoration and it goes.
+
+### Which writing-skill rules bend here
+
+The `writing` skill is built for compression, and compression fights teaching. These are the only rules that move, and they move this far and no further:
+
+| Rule in `writing` | In an explainer |
+|---|---|
+| Cut a first draft by a third | Cut the padding, keep the explanation. Word count follows difficulty. |
+| No summary paragraph that repeats what you just said | Holds at the end of the page. After a hard mechanism, one short "what just happened" line is a checkpoint, not a summary. |
+| No lists of three when two facts will do | Relaxed when the three are real: three question types are three. |
+| No setup or payoff sentences | Holds for rhythm. A sentence that poses the reader's actual question is the question, not a setup. |
+| One idea per sentence | Holds, and matters more here. It is what makes a long explanation readable. |
+| Concrete over abstract, numbers over adjectives | Holds without exception. |
+| No passive, no ban-list phrases, no -ly padding, no antithesis, no corrective negation | Holds without exception. |
+
 ## Step 3 - the shape that works
 
 Not every explainer needs every section. It needs them in this order.
@@ -76,6 +105,10 @@ Not every explainer needs every section. It needs them in this order.
 | Build ideas | The section the reader came for. Ground each in something they already own. |
 | Twenty minutes to first answer | Install, key, one script, one check they can run. |
 | Sources | Every URL, plus anything you sampled from a local file, with the date. |
+
+**Sources go last, every time.** Link inline where a claim needs its source, and keep the
+full list at the end so the page closes on its evidence. A reader who wants to check you
+should find everything in one place without scrolling back through the argument.
 
 ## Step 4 - diagrams
 
@@ -124,14 +157,56 @@ Hold the prose to the measure and let the wide things break out of it:
   width: min(100%, var(--wide)); justify-self: center; }
 ```
 
-Six rules for the file itself:
+Eight rules for the file itself:
 
 - **One file.** CSS inline in a `<style>` block, images as `data:` URIs, no JavaScript unless the page teaches something only interaction can teach.
 - **Fonts.** A Google Fonts `<link>` plus the fallback stack above is enough for a page that lives online. For a page that has to work offline or behind a proxy, pull woff2 from npm (`npm pack @fontsource/inter @fontsource/jetbrains-mono`) and base64-inline them.
 - **Both themes.** `prefers-color-scheme` with a `[data-theme]` override, and an explicit `background` on `body`.
 - **Phone width.** 16px gutter, no horizontal page scroll, tables allowed to scroll inside their own box.
 - **Print.** A small `@media print` block: 11pt body, `break-inside: avoid` on figures, code and tables.
+- **Every code block carries a copy control.** A reader who wants to run your example should not have to select it by hand. A button in the top-right corner of each block, showing a clipboard icon and the word Copy, flipping to Copied for a second after a click. This is the page's only JavaScript: about thirty lines, no dependencies, `navigator.clipboard.writeText` with a hidden-textarea fallback for browsers that refuse it. With JavaScript off the code is still there and still selectable.
+- **A script the reader is meant to run takes its input as an argument**, and accepts both a
+  local path and an `https://` URL, working out which it has from the prefix. Refuse plain
+  `http://` with a message rather than fetching in the clear. Fetch with the standard library
+  rather than adding a dependency, and rewrite the obvious host-specific forms — a GitHub file
+  page and a bare repo URL both have a raw equivalent — so the reader can paste the link they
+  already have.
 - **A table of contents** once the page passes six sections.
+
+### The markdown twin
+
+Ship `<name>.md` beside `<name>.html`, same content, same section order, same headings, so a
+link to a section in one lands in the same place in the other.
+
+- **Diagrams become ASCII in a fenced `text` block.** Draw the same mechanism, not a caption
+  apologising for a missing picture. Keep every line under 80 columns so it survives a
+  terminal, a diff and a code review pane.
+- **Tables stay tables. Code blocks keep their language tag.** A fenced block already copies
+  cleanly, so the copy control has no markdown equivalent and needs none.
+- **Generate the markdown from the finished HTML** rather than writing the page twice. A
+  hundred-line converter that walks the top-level elements and substitutes the ASCII art by
+  figure index does it, and keeps the two files from drifting.
+- **Read the markdown once before shipping.** Check that the fences balance, that no raw HTML
+  leaked through, and that every code block still parses.
+
+### The poster
+
+An explainer earns a poster when somebody will present it, print it or pin it up. Once the HTML
+and the markdown are done, build one with the `poster-making` skill in this repo
+(`skills/poster-making/`). Read that skill and follow it rather than improvising: it carries the
+design system, the fit loop and its own verification pass.
+
+The explainer is the source, and the poster is the same argument at poster density rather than a
+summary of it: the problem made concrete, the numbers as tiles, the mechanism, one worked
+example, the limits, and a QR to the full page.
+
+- **The QR points at the markdown twin** in the repo, so a phone camera lands on something
+  readable rather than raw HTML.
+- **The chart comes from the explainer's own numbers**, drawn as inline SVG.
+- **Four files land in `<topic>/poster/`**: the HTML, two 300 DPI PNGs and the PDF.
+- **Run the poster skill's checks before handing it over**: both PNGs 2481x3509, both QRs decoded
+  back out of the rendered images, the PDF two pages at 209.9 x 297.0 mm, both pages reporting
+  `sh == ch`, and no banned strings.
 
 ## Step 6 - verify before you ship
 
@@ -145,6 +220,7 @@ Run all of it. Every check has caught something real.
 6. **Render.** Screenshot light, dark and 390px wide, and look at them. Check that nothing overflows its container.
 7. **Links.** Every URL in the source list resolves.
 8. **Numbers.** Every figure on the page traces to a source in the list, with a date.
+9. **Register.** Take three sections and mark every sentence A or E, as above. A section with no E sentences is a summary. Rewrite it before you ship.
 
 ```python
 # the two checks worth automating first
@@ -172,11 +248,51 @@ print(pg.evaluate("""() => {
 }"""))
 ```
 
+## Step 7 - read it once more, top to bottom
+
+Every check so far looks at one sentence or one number. This one looks at the whole page,
+and it is the last thing you do before shipping.
+
+Read it as the reader would, start to finish, in one sitting. Three questions:
+
+- **Does it flow?** Each section should follow from the one before it. A section you have
+  to re-read to work out why it is there belongs somewhere else, or nowhere.
+- **Does anything repeat?** By now you have written the same idea twice in two places
+  without noticing. Keep the better one. A worked example that demonstrates a rule beats
+  the sentence that stated it, so cut the sentence.
+- **Has anything stopped earning its place?** A paragraph that was load-bearing in the
+  first draft is often dead weight once the rest arrived. Cut it, even though it took an
+  hour to write.
+
+The test for every paragraph: the reader is giving you their attention and you asked for
+it, so what are they getting back for this one?
+
+Expect to cut. On the page this pass was written for, it removed a 33-line code block
+that duplicated the worked example, four sentences that a later section said better, and
+a caption that repeated the paragraph above it.
+
 ## Ship it
 
-- Write to `explainers/<topic>-explainer.html`, beside the repo it explains when there is one.
+- One folder per explainer, so everything about a topic travels together:
+
+```
+explainers/<topic>/
+  <topic>-explainer.html
+  <topic>-explainer.md
+  poster/
+    <topic>-poster.html
+    <topic>-poster-front.png
+    <topic>-poster-back.png
+    <topic>-poster.pdf
+```
+
+- Keep the topic in every filename even though the folder already carries it. These files travel:
+  downloaded, emailed, dropped into a slide. A file called `explainer.html` on somebody's desktop
+  has lost its name.
 - **Never add a version suffix to a shipped file.** A second draft overwrites the first.
 - Say in one line what the page covers and where it landed. The reader opens it themselves.
+- **Check the file at the path the reader will open.** A commit on a branch does not change the
+  working copy they have bookmarked.
 
 ## Stay inside the lines
 
@@ -185,5 +301,9 @@ print(pg.evaluate("""() => {
 - Do not state a number without a date and an owner.
 - Do not present a vendor's self-scored benchmark as measured fact.
 - Do not write a section whose only job is to introduce the next one.
+- Do not ship a section that is all assertion. A reader who did not already know the subject has to learn why, not only what.
+- Do not stage the next sentence. No "now look at", no "here is the thing", no applause line at the end of a section.
+- Do not tell the reader a fact is important. Show the consequence and let them decide.
+- Do not ship without the final read-through. The draft you stop editing is not the draft that reads best.
 - Do not add a diagram that repeats what the paragraph above it already said.
 - Do not pad to length. A page that earns 1,200 words should be 1,200 words.

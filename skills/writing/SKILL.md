@@ -4,7 +4,7 @@ description: Write prose people will actually read. Use for any prose you produc
 license: Apache-2.0
 metadata:
   author: aarora79
-  version: "1.0"
+  version: "1.1"
 ---
 
 # Writing Skill
@@ -112,6 +112,13 @@ Word-level fixes are not enough. LLMs lean on a handful of sentence shapes that 
 - No summary beats. Do not restate the point you just made in different words.
 - No stacked noun phrases. Break "a customer-focused value-creation engagement model" into words that do work.
 - No nominalization. Turn the noun back into its verb: "reach a decision" -> "decide", "conduct an investigation" -> "investigate", "provide support for" -> "support".
+- No significance flags. Do not tell the reader that something matters; give the reason and let them judge. Ban: matters more than it looks, worth noticing, the part worth knowing, this is the important bit, note that, importantly, and that is not a small thing.
+  - Bad: State can be a string, an object or an array, and the choice matters more than it looks.
+  - Good: State can be a string, an object or an array. Use an object, because named fields tell the reader which part is which.
+- No stage directions. Do not open a sentence by pointing at the next one: "Now look at", "Watch what happens", "Here is the thing", "Consider", "Notice that". Start with the fact.
+  - Bad: Now look at what this does to the bill.
+  - Good: The expensive model only sees the requests that need it, which is most of the saving.
+- No closing flourishes. "That is the whole interface", "and the rest is variations on it", "end of story" are applause lines. Stop when the information stops.
 - Vary sentence length on purpose, not on a pattern. Mix short and long so the rhythm is unpredictable. Do not alternate long-short-long-short.
 
 ## Revision pass
@@ -123,7 +130,7 @@ Run this on every draft before you ship it:
 3. Search for `ly ` and delete or replace each hit.
 4. Delete every phrase from the ban lists above.
 5. Cut the first sentence of each paragraph if the second one already says it.
-6. Scan for the sentence-shape tells above: antithesis, corrective negation, contrasting pairs, setup/payoff, parallel structure, stacked nouns. Rewrite each into a plain statement.
+6. Scan for the sentence-shape tells above: antithesis, corrective negation, contrasting pairs, setup/payoff, parallel structure, stacked nouns, significance flags, stage directions, closing flourishes. Rewrite each into a plain statement.
 7. Count words. Cut a third.
 8. Check every claim against something real - a source, a number, a date.
 9. Apply rule 6 last: read once more and undo anything that now sounds wrong.

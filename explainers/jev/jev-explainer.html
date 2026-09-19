@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Jev: a model that decides instead of writing</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  /* Type system: Inter for text, JetBrains Mono for code.
+     Body 18px/1.7 over a 64ch measure (~72 characters a line).
+     Deep teal carries the structure, amber marks the asides. */
+  :root {
+    --measure: 64ch;
+    --sans: Inter, Roboto, -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    --mono: "JetBrains Mono", "Roboto Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+    --bg: #fbfaf7;
+    --panel: #ffffff;
+    --ink: #14211f;
+    --ink-2: #33474a;
+    --ink-3: #5b6d6e;
+    --rule: #e4e1d8;
+    --accent: #0b6e6a;
+    --accent-2: #8a5a00;
+    --accent-2-line: #e0a71c;
+    --warn: #a3311f;
+    --code-bg: #f2f1ec;
+    --code-ink: #14211f;
+    --mark: #fdf0c4;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0f1717;
+      --panel: #16201f;
+      --ink: #e6eceb;
+      --ink-2: #b3c2c0;
+      --ink-3: #86999a;
+      --rule: #253331;
+      --accent: #5fd4c4;
+      --accent-2: #f2c14e;
+      --accent-2-line: #f2c14e;
+      --warn: #ef9a8a;
+      --code-bg: #141f1e;
+      --code-ink: #e6eceb;
+      --mark: #3a3113;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0f1717; --panel: #16201f; --ink: #e6eceb; --ink-2: #b3c2c0;
+    --ink-3: #86999a; --rule: #253331; --accent: #5fd4c4; --accent-2: #f2c14e;
+    --accent-2-line: #f2c14e; --warn: #ef9a8a; --code-bg: #141f1e;
+    --code-ink: #e6eceb; --mark: #3a3113;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: var(--sans);
+    font-size: 18px; line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Everything sits on one column, so prose, figures, tables and code
+     share the same left and right edge. */
+  .wrap {
+    display: grid;
+    grid-template-columns: 1fr min(var(--measure), 100%) 1fr;
+    padding: 0 16px 120px;
+  }
+  .wrap > * { grid-column: 2; }
+
+  header.top { padding: 72px 0 32px; border-bottom: 1px solid var(--rule); }
+  h1 {
+    font-size: clamp(32px, 4.6vw, 42px); line-height: 1.16; font-weight: 700;
+    letter-spacing: -0.021em; margin: 0 0 16px;
+  }
+  .standfirst { font-size: 21px; line-height: 1.55; color: var(--ink-2); margin: 0 0 20px; }
+  .byline { font-size: 14.5px; color: var(--ink-3); }
+  h2 {
+    font-size: 28px; line-height: 1.25; font-weight: 700; letter-spacing: -0.015em;
+    margin: 64px 0 16px; padding-top: 16px; border-top: 1px solid var(--rule);
+  }
+  h3 { font-size: 21px; line-height: 1.35; font-weight: 600; margin: 40px 0 10px; letter-spacing: -0.008em; }
+  h4 { font-size: 17px; font-weight: 600; margin: 26px 0 8px; }
+  p { margin: 0 0 18px; }
+  a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+  ul, ol { margin: 0 0 18px; padding-left: 24px; }
+  li { margin-bottom: 9px; }
+  strong, b { font-weight: 600; }
+  code {
+    font-family: var(--mono); font-size: 0.87em;
+    background: var(--code-bg); padding: 1px 5px; border-radius: 4px;
+  }
+  pre {
+    background: var(--code-bg); color: var(--code-ink); padding: 18px 20px;
+    border-radius: 8px; overflow-x: auto; border: 1px solid var(--rule);
+    font-size: 14.5px; line-height: 1.65; margin: 0 0 22px;
+    font-family: var(--mono);
+  }
+  pre code { background: none; padding: 0; font-size: inherit; }
+
+  .codewrap { position: relative; margin: 0 0 22px; }
+  .codewrap > pre { margin: 0; }
+  .copy-btn {
+    position: absolute; top: 10px; right: 10px;
+    display: inline-flex; align-items: center; gap: 6px;
+    font: 500 12.5px/1 var(--sans); color: var(--ink-3);
+    background: var(--bg); border: 1px solid var(--rule); border-radius: 6px;
+    padding: 6px 9px; cursor: pointer; opacity: 0; transition: opacity .12s, color .12s, border-color .12s;
+  }
+  .codewrap:hover .copy-btn, .copy-btn:focus-visible { opacity: 1; }
+  .copy-btn:hover, .copy-btn.done { color: var(--accent); border-color: var(--accent); opacity: 1; }
+  @media (hover: none) { .copy-btn { opacity: 1; } }
+  @media print { .copy-btn { display: none; } }
+
+  .num-strip {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(155px, 1fr));
+    gap: 1px; background: var(--rule); border: 1px solid var(--rule);
+    border-radius: 8px; overflow: hidden; margin: 30px 0 8px;
+  }
+  .num { background: var(--panel); padding: 16px 14px; }
+  .num b { display: block; font-size: 23px; line-height: 1.25; color: var(--accent); letter-spacing: -0.02em; font-weight: 600; white-space: nowrap; }
+  .num span { display: block; font-size: 13.5px; line-height: 1.45; color: var(--ink-3); margin-top: 6px; }
+  figure { margin: 34px 0; }
+  figure svg { width: 100%; height: auto; display: block; }
+  figcaption { font-size: 14.5px; line-height: 1.55; color: var(--ink-3); margin-top: 12px; max-width: var(--measure); }
+  table {
+    width: 100%; border-collapse: collapse; margin: 0 0 24px;
+    font-size: 16px; line-height: 1.6; font-variant-numeric: tabular-nums;
+  }
+  th, td { text-align: left; padding: 11px 12px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  th { font-size: 13px; font-weight: 600; color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.06em; }
+  td code { white-space: normal; overflow-wrap: anywhere; }
+  .idea table { display: block; overflow-x: auto; }
+  .callout {
+    border-left: 4px solid var(--accent-2-line); background: var(--panel);
+    padding: 16px 20px; margin: 26px 0; border-radius: 0 8px 8px 0;
+  }
+  .callout p { max-width: var(--measure); }
+  .callout p:last-child { margin-bottom: 0; }
+  .callout b { font-size: 14.5px; letter-spacing: 0.04em; font-weight: 600; }
+  .slot { border: 2px dashed var(--accent-2-line); border-left-width: 4px; background: transparent; }
+  .idea { background: var(--panel); border: 1px solid var(--rule); border-radius: 12px; padding: 22px 24px; margin: 28px 0; }
+  .idea > h3 { margin-top: 0; }
+  .idea p, .idea li, .idea h3, .idea h4, .idea > ol, .idea > ul { max-width: var(--measure); }
+  .tag {
+    display: inline-block; font-size: 11.5px; letter-spacing: 0.08em; text-transform: uppercase;
+    font-weight: 600; color: var(--accent-2); border: 1px solid var(--accent-2-line);
+    padding: 3px 9px; border-radius: 99px; margin-bottom: 12px;
+  }
+  .sources { font-size: 16px; }
+  .sources li { margin-bottom: 7px; }
+  .toc { background: var(--panel); border: 1px solid var(--rule); border-radius: 12px; padding: 20px 24px; margin: 36px 0; font-size: 16px; }
+  .toc ol { margin: 0; padding-left: 22px; }
+  .toc li { margin-bottom: 6px; }
+  mark { background: var(--mark); color: inherit; padding: 0 2px; }
+
+  .svg-ink { fill: var(--ink); }
+  .svg-ink2 { fill: var(--ink-2); }
+  .svg-ink3 { fill: var(--ink-3); }
+  .svg-acc { fill: var(--accent); }
+  .svg-acc2 { fill: var(--accent-2); }
+  .box { fill: var(--panel); stroke: var(--rule); stroke-width: 1.5; }
+  .box-acc { fill: none; stroke: var(--accent); stroke-width: 1.5; }
+  .line { stroke: var(--ink-3); stroke-width: 1.4; fill: none; }
+  .line-acc { stroke: var(--accent); stroke-width: 1.6; fill: none; }
+  svg text { font-family: var(--sans); }
+  svg .mono { font-family: var(--mono); }
+  .mono { font-family: var(--mono); }
+  .sans { font-family: var(--sans); }
+
+  @media (max-width: 700px) {
+    body { font-size: 17px; line-height: 1.65; }
+    h2 { font-size: 24px; margin-top: 48px; }
+    h3 { font-size: 19px; }
+    .standfirst { font-size: 19px; }
+    pre { font-size: 13px; padding: 14px 16px; }
+    .idea { padding: 18px 16px; }
+    table { display: block; overflow-x: auto; font-size: 15px; }
+    h1 { hyphens: auto; }
+  }
+  @media print {
+    body { font-size: 11pt; background: #fff; color: #000; }
+    .toc, .num-strip { break-inside: avoid; }
+    figure, pre, table { break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <h1>Jev: a model that decides instead of writing</h1>
+  <p class="standfirst">TypeSafe AI shipped a model that answers typed questions in about a tenth of a second and never returns prose. This covers how it works, where it breaks, and a script you can run against your own files in the next twenty minutes.</p>
+  <p class="byline">Written 19 September 2026 · all numbers dated and attributed · code samples in Python</p>
+</header>
+
+<div class="toc">
+  <ol>
+    <li><a href="#what">What Jev is</a></li>
+    <li><a href="#how">How it answers ten questions in the time an LLM writes one word</a></li>
+    <li><a href="#example">One call, start to finish</a></li>
+    <li><a href="#primitives">The three primitives</a></li>
+    <li><a href="#api">The request and the response</a></li>
+    <li><a href="#patterns">Five patterns that hold up</a></li>
+    <li><a href="#cannot">What it gets wrong</a></li>
+    <li><a href="#repos">Repos worth reading</a></li>
+    <li><a href="#start">Run it yourself</a></li>
+  </ol>
+</div>
+
+<h2 id="what">What Jev is</h2>
+
+<p>Think about what your code asks a language model to do most of the day. Rarely "write me an essay". Far more often: is this ticket about billing? Is this diff risky? Should I read more of the file before I edit it? Each one is a decision with a small set of answers, and you know the answers before you ask: billing, technical or sales; risky or not.</p>
+
+<p>Getting one of those answers takes more machinery than the question deserves. You write a prompt, the model writes a paragraph or a JSON blob back, and your code parses it, checks that the parse worked, and handles the case where it did not. You are asking a machine that produces text to make a choice, then turning the text back into the choice you wanted. The text in the middle is overhead, and you pay for it twice: in tokens, and in the seconds somebody spends waiting.</p>
+
+<p>Jev deletes the middle. You hand it <b>state</b>, meaning whatever your program already holds: the ticket, the file, the last six turns of a conversation. With the state you send a list of questions, each one carrying its possible answers written out in advance. What comes back is the answers, with no sentence wrapped around them, nothing to parse and nothing to retry.</p>
+
+<p>TypeSafe calls this a <b>System One model</b>, after Daniel Kahneman's name for fast, automatic thinking: the judgment you reach without deliberating, the way you read a face as angry before you could explain how you knew. Kahneman's System Two is the slow, effortful kind you use on long division or a legal argument. A frontier LLM does System Two work, and you can talk it into doing System One work badly. Jev does one of those jobs and refuses the other.</p>
+
+<p>The company's own line for it: <em>"a frontier-intelligence function call: unstructured state in, typed probabilistic decisions out."</em> Take that as a promise about the call shape rather than a boast. You already know how to call a function, branch on what it returns and write a test for it. The API asks nothing else of you.</p>
+
+<div class="num-strip">
+  <div class="num"><b>70–500 ms</b><span>End to end. Most calls land near 100 ms, per TypeSafe.</span></div>
+  <div class="num"><b>$0.042</b><span>Per million input tokens. Output tokens cost nothing.</span></div>
+  <div class="num"><b>0%</b><span>Malformed answers, by construction rather than by measurement.</span></div>
+  <div class="num"><b>12.2×</b><span>Cheaper than 13 separate calls, on a 53,777-character document.</span></div>
+</div>
+<p class="byline" style="margin-bottom:0">Vendor figures from the TypeSafe launch post and docs, September 2026. Nobody outside the company has reproduced the latency yet.</p>
+
+<p>The time gap comes from the shape of the two calls. A frontier LLM asked to classify that ticket loads the prompt and then produces one token at a time, feeding each token it has written back in before it picks the next. That loop is what <b>autoregressive</b> means, and it explains why a long answer takes longer than a short one: the model runs itself once per token. TypeSafe measured those round trips at 3 to 329 seconds. Jev takes in the same state once and produces every answer at the same time, which is what makes a tenth of a second possible at all.</p>
+
+<figure>
+<svg viewBox="0 0 820 330" role="img" aria-labelledby="d1t">
+  <title id="d1t">Sequential token generation compared with parallel typed readout</title>
+  <text x="0" y="16" class="svg-ink sans" font-size="14" font-weight="700">Autoregressive LLM</text>
+  <text x="430" y="16" class="svg-acc sans" font-size="14" font-weight="700">Jev</text>
+
+  <!-- left column -->
+  <rect x="0" y="30" width="150" height="34" rx="6" class="box"/>
+  <text x="12" y="52" class="svg-ink2 mono" font-size="12">state + prompt</text>
+  <path d="M75 64 L75 84" class="line" marker-end="url(#ar)"/>
+  <rect x="0" y="84" width="360" height="118" rx="6" class="box"/>
+  <text x="14" y="104" class="svg-ink3 sans" font-size="11">one token, then the next, then the next</text>
+  <g>
+    <rect x="14" y="116" width="42" height="24" rx="4" class="box-acc"/><text x="22" y="132" class="svg-ink mono" font-size="11">tok₁</text>
+    <path d="M58 128 L68 128" class="line" marker-end="url(#ar)"/>
+    <rect x="70" y="116" width="42" height="24" rx="4" class="box-acc"/><text x="78" y="132" class="svg-ink mono" font-size="11">tok₂</text>
+    <path d="M114 128 L124 128" class="line" marker-end="url(#ar)"/>
+    <rect x="126" y="116" width="42" height="24" rx="4" class="box-acc"/><text x="134" y="132" class="svg-ink mono" font-size="11">tok₃</text>
+    <path d="M170 128 L180 128" class="line" marker-end="url(#ar)"/>
+    <text x="184" y="132" class="svg-ink3 mono" font-size="12">… last tok</text>
+  </g>
+  <text x="14" y="164" class="svg-ink2 sans" font-size="12">then: parse the string, validate the schema,</text>
+  <text x="14" y="182" class="svg-ink2 sans" font-size="12">retry when it comes back malformed</text>
+  <path d="M180 202 L180 226" class="line" marker-end="url(#ar)"/>
+  <rect x="0" y="226" width="360" height="40" rx="6" class="box"/>
+  <text x="14" y="251" class="svg-ink mono" font-size="12">{"category": "billing"}   3–329 s</text>
+
+  <!-- divider -->
+  <line x1="398" y1="24" x2="398" y2="300" stroke="var(--rule)" stroke-width="1"/>
+
+  <!-- right column -->
+  <rect x="430" y="30" width="180" height="34" rx="6" class="box"/>
+  <text x="442" y="52" class="svg-ink2 mono" font-size="12">state + 13 questions</text>
+  <path d="M520 64 L520 84" class="line-acc" marker-end="url(#ara)"/>
+  <rect x="430" y="84" width="380" height="54" rx="6" class="box-acc"/>
+  <text x="444" y="106" class="svg-acc sans" font-size="12" font-weight="700">one prefill: the state read once</text>
+  <text x="444" y="126" class="svg-ink3 sans" font-size="11">each question is scored against it, none sees another's answer</text>
+  <g class="line-acc">
+    <path d="M480 138 L480 168" marker-end="url(#ara)"/>
+    <path d="M560 138 L560 168" marker-end="url(#ara)"/>
+    <path d="M640 138 L640 168" marker-end="url(#ara)"/>
+    <path d="M720 138 L720 168" marker-end="url(#ara)"/>
+  </g>
+  <g>
+    <rect x="440" y="168" width="80" height="46" rx="5" class="box"/>
+    <text x="450" y="183" class="svg-ink mono" font-size="11">choice</text>
+    <text x="450" y="195" class="svg-ink3 sans" font-size="8.5">pick one</text>
+    <rect x="450" y="200" width="52" height="5" rx="2.5" fill="var(--accent)" opacity="0.85"/>
+    <rect x="450" y="207" width="18" height="5" rx="2.5" fill="var(--accent)" opacity="0.35"/>
+    <rect x="520" y="168" width="80" height="46" rx="5" class="box"/>
+    <text x="530" y="183" class="svg-ink mono" font-size="11">score</text>
+    <text x="530" y="195" class="svg-ink3 sans" font-size="8.5">rate it</text>
+    <rect x="530" y="200" width="34" height="5" rx="2.5" fill="var(--accent)" opacity="0.85"/>
+    <rect x="530" y="207" width="44" height="5" rx="2.5" fill="var(--accent)" opacity="0.35"/>
+    <rect x="600" y="168" width="80" height="46" rx="5" class="box"/>
+    <text x="610" y="183" class="svg-ink mono" font-size="11">noul</text>
+    <text x="610" y="195" class="svg-ink3 sans" font-size="8.5">true?</text>
+    <rect x="610" y="200" width="58" height="5" rx="2.5" fill="var(--accent)" opacity="0.85"/>
+    <rect x="610" y="207" width="10" height="5" rx="2.5" fill="var(--accent)" opacity="0.35"/>
+    <rect x="680" y="168" width="80" height="46" rx="5" class="box"/>
+    <text x="690" y="183" class="svg-ink mono" font-size="11">noul</text>
+    <text x="690" y="195" class="svg-ink3 sans" font-size="8.5">true?</text>
+    <rect x="690" y="200" width="22" height="5" rx="2.5" fill="var(--accent)" opacity="0.85"/>
+    <rect x="690" y="207" width="48" height="5" rx="2.5" fill="var(--accent)" opacity="0.35"/>
+  </g>
+  <path d="M600 214 L600 240" class="line-acc" marker-end="url(#ara)"/>
+  <rect x="430" y="240" width="380" height="42" rx="6" class="box"/>
+  <text x="444" y="266" class="svg-ink mono" font-size="12">typed answers + probabilities   70–500 ms</text>
+
+  <defs>
+    <marker id="ar" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <path d="M0 0 L8 4 L0 8 z" fill="var(--ink-3)"/>
+    </marker>
+    <marker id="ara" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <path d="M0 0 L8 4 L0 8 z" fill="var(--accent)"/>
+    </marker>
+  </defs>
+</svg>
+<figcaption>The shape of the two calls. Jev's three question types appear on the right: choice picks an option, score rates against a rubric, noul answers is this true. A thirteenth question there costs its own tokens and almost no extra time.</figcaption>
+</figure>
+
+<h2 id="how">How it answers ten questions in the time an LLM writes one word</h2>
+
+<p>Three design choices produce that speed. Each one also costs something.</p>
+
+<p><b>The architecture is non-autoregressive.</b> Jev produces all of its outputs from a single pass instead of feeding each token back in, which is exactly the loop it removes. TypeSafe describes it as parallel sampling that is hardware-aware. Jev scores every question in a request against the same state, none of them sees another's answer, so the model works on all of them at once. TypeSafe says it found no batching penalty past normal sampling noise, which means a request carrying twelve questions costs the tokens of twelve and about the wall-clock of one. The price of that design is that questions cannot build on each other. If question B needs the answer to question A, you are making two calls, and the round trip you saved comes straight back.</p>
+
+<p><b>You fix the output space in advance.</b> You list the options before the call, so the model chooses among your strings rather than inventing one of its own, and it reports how the probability mass fell across them. This is why the 0% type-error rate is structural rather than measured: a malformed answer has nowhere to live, because no free-form text exists for it to live in. You will never write a retry for a broken parse again. You have learned nothing about whether the answer is <em>right</em>, and a confidently wrong answer arrives in the same well-formed shape as a correct one.</p>
+
+<p><b>Training targeted calibration</b>, which means the probability the model states matches how often that answer turns out right. TypeSafe trained Jev with Reinforcement Learning for Calibrated Decisions, which rewards that match rather than rewarding a helpful-sounding reply. In plain terms: take every answer the model marked 0.9, and about nine in ten of them should be correct. That property lets you put the number inside an <code>if</code> statement, and that claim is the one worth testing yourself, because every gate and threshold you build on Jev inherits it. The number you test is <b>confidence</b>, the share of the probability mass sitting on the answer the model picked.</p>
+
+<div class="callout">
+  <p><b>THE OPEN REPRODUCTION TELLS YOU MORE THAN THE BLOG POST.</b></p>
+  <p>Jev itself is closed, so the mechanism above comes from what TypeSafe chooses to publish. The cheapest way to see how a call like this can work is to read somebody rebuilding it on parts you can inspect. <a href="https://github.com/ekzhang/openjev-sglang">openjev-sglang</a> rebuilds the interface on open weights with a one-token readout: read the state once, append a per-question suffix, then take the model's own scores for the answer labels (its log-probabilities) and renormalize them over those labels alone. Labels are <code>A</code>–<code>Z</code> and verified single-token pairs such as <code>AA</code>, so every answer reads out in exactly one token. Jev may not work this way inside. openjev is still the cheapest way to get the same call shape on a model you host, and it runs on SGLang, an open-source inference server.</p>
+</div>
+
+<h2 id="example">One call, start to finish</h2>
+
+<p>A support ticket arrives. Three things have to happen to it: it goes to a team, somebody decides how urgently, and the billing system may need to cut a refund. Three decisions over one piece of text, and one call can carry all three.</p>
+
+<pre><code>from typesafe_sdk import Choice, Noul, Score, TypeSafeClient
+
+client = TypeSafeClient()
+
+ticket = """I have been charged twice for order A-104. The second charge
+hit this morning. I have emailed twice and nobody has replied.
+Please refund the duplicate today."""
+
+answers = client.system_one(
+    model="jev-1.13.0",
+    state={"ticket": ticket},
+    questions={
+        # Choice: pick exactly one of the options you list
+        "team": Choice(
+            instructions="Which team should handle this ticket",
+            criteria={
+                "billing":   "Charges, invoices, refunds",
+                "technical": "Something is broken or behaving wrong",
+                "sales":     "Pricing, plans, account changes",
+            },
+        ),
+        # Score: place the ticket on a rubric you order yourself
+        "anger": Score(
+            instructions="How angry the customer sounds",
+            criteria=[
+                "Calm, stating facts",
+                "Frustrated but civil",
+                "Furious, threatening to leave",
+            ],
+        ),
+        # Noul: one statement, answered as a probability
+        "wants_refund": Noul(
+            instructions="The customer is asking for money back",
+        ),
+    },
+).answers</code></pre>
+
+<p>That is one request and one round trip, whatever the three questions happen to be. Printing what came back:</p>
+
+<pre><code>answers["team"].choice           # "billing"
+answers["team"].confidence       # 0.94
+answers["team"].probabilities    # {"billing": 0.94, "technical": 0.04, "sales": 0.02}
+
+answers["anger"].score           # 1.4
+answers["wants_refund"].noul     # 0.97</code></pre>
+
+<p class="byline" style="margin-bottom:22px">Illustrative values rather than a recorded run. The field shapes come from TypeSafe's SDK docs; the numbers are what a call like this returns.</p>
+
+<p>Read them one at a time, because each type answers a different kind of question about the same text.</p>
+
+<ul>
+  <li><code>team.choice</code> is one of the three strings you listed and cannot be anything else, so the next line of your code switches on it without a branch for surprises.</li>
+  <li><code>team.probabilities</code> shows where the rest of the mass went. At 0.94 against 0.04 and 0.02 the model was not torn. A ticket that came back 0.51 billing and 0.47 technical is the one you want a human to look at, and the distribution is the only place that shows up.</li>
+  <li><code>anger.score</code> is 1.4 on the three-level rubric you wrote, whose levels count 0, 1 and 2 in the order you listed them. It sits between "frustrated but civil" and "furious", which tells you more than either label alone. Scores landing between levels are normal, so treat the rubric as a ruler rather than three boxes.</li>
+  <li><code>wants_refund.noul</code> is 0.97, a probability rather than a yes. A noul carries no separate confidence field, because the number already is the confidence.</li>
+</ul>
+
+<p>The code that acts on those answers is ordinary Python, and none of it parses anything.</p>
+
+<pre><code>team = answers["team"]
+if team.confidence &lt; 0.6:
+    queue_for_human(ticket)                  # the model is telling you it is unsure
+else:
+    assign(ticket, team.choice)
+
+if answers["anger"].score &gt; 1.2:
+    mark_priority(ticket)                    # angry enough to jump the queue
+
+if answers["wants_refund"].noul &gt; 0.9:
+    open_refund_case(ticket, amount="auto")  # money moves, so the bar is high</code></pre>
+
+<p>Three thresholds at three different heights, each written next to the action it guards. Sending money needs 0.9; putting a ticket in a queue needs 0.6; nothing needs a retry loop or a schema validator.</p>
+
+<p>What it cost: the ticket runs about 60 tokens and the questions with their criteria maybe 120 more. At $0.042 per million input tokens, those 180 tokens come to $0.0000076, and the answers land in roughly a tenth of a second.</p>
+
+<h2 id="primitives">The three primitives</h2>
+
+<p>Every question you can ask is one of three types, and the type you pick is a claim about the shape of the answer. Pick the wrong shape and you fight it later: a yes-or-no judgment forced into a five-option choice throws away the single number you wanted. Each answer carries its probability distribution and its confidence.</p>
+
+<table>
+  <thead><tr><th>Type</th><th>Asks</th><th>Returns</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><code>Noul</code></td>
+      <td>Is this statement true of the state?</td>
+      <td><code>.noul</code>, a probability from 0 to 1. No separate confidence field, because the number is the confidence.</td>
+    </tr>
+    <tr>
+      <td><code>Choice</code></td>
+      <td>Which of these options fits? Up to 255 of them.</td>
+      <td><code>.choice</code>, <code>.probabilities</code> over every option, <code>.confidence</code>.</td>
+    </tr>
+    <tr>
+      <td><code>Score</code></td>
+      <td>Where on this ordered rubric does it sit?</td>
+      <td><code>.score</code>, which lands between levels (1.035 is a real answer), <code>.probabilities</code>, <code>.confidence</code>.</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Two rules govern how you write the questions, and breaking the first causes most of the trouble. Keep each question atomic, so that it asks about exactly one thing. "Is this ticket urgent and about billing?" has no honest answer when the ticket is urgent and about something else; the model picks one half of your question for you and never says which half it picked. Ask the two questions separately. The second rule follows: when a judgment has several parts, keep the weighting in your own code rather than inside the wording of one question, where you can read it in a diff and change it without retraining anything.</p>
+
+<h2 id="api">The request and the response</h2>
+
+<p>One endpoint does everything: <code>POST https://api.typesafe.ai/v1/systemone</code>. The body holds <code>state</code>, <code>model</code> and <code>questions</code>. The response holds <code>model</code>, <code>answers</code> keyed by the ids you chose for your questions, and <code>usage</code>. No session, no thread, no conversation history to manage, because nothing carries over from one call to the next. Every call is a function call with its arguments in front of it.</p>
+
+<p>Two limits bound a request, and the second one decides more than the first. The whole request, state and every question together, caps at 64,000 tokens. Each question is then bound on its own: the state plus that one question has to fit in 32,000 tokens. That second number is why third-party listings quote Jev's context window as 32K rather than 64K, and the parallel architecture explains the gap. No question ever sees another question, so what each one gets scored against is the state plus itself. The 64,000 is the ceiling on what you can put on the wire at once.</p>
+
+<p>So the state is the budget, and the questions are cheap. A 30,000-token state leaves room for one question and nothing else. A 5,000-token state leaves room for dozens, which is what makes the fan-out pattern below worth building a habit around. Above that sit the throughput limits, 250,000 tokens a second and 1,200 requests a minute, which TypeSafe says it adjusts without notice.</p>
+
+<p>State can be a string, an object, or an array. Use an object. Named fields tell the model what each part of the state is, so <code>{"ticket": …, "customer_history": …}</code> reads differently from the same two blocks of text glued together, where the model has to guess where one ends. Named fields also let you diff one state against another once you start logging every call, which is what you will want the first hour an answer surprises you.</p>
+
+<figure>
+<svg viewBox="0 0 820 300" role="img" aria-labelledby="d2t">
+  <title id="d2t">Anatomy of a Jev request and response</title>
+  <rect x="0" y="10" width="360" height="270" rx="8" class="box"/>
+  <text x="16" y="34" class="svg-acc sans" font-size="13" font-weight="700">REQUEST</text>
+  <text x="16" y="58" class="svg-ink mono" font-size="12">model: "jev-latest"</text>
+  <text x="16" y="82" class="svg-ink mono" font-size="12">state: { … }</text>
+  <text x="30" y="102" class="svg-ink3 sans" font-size="11">string · object · array of text. No images.</text>
+  <text x="16" y="128" class="svg-ink mono" font-size="12">questions: {</text>
+  <text x="34" y="150" class="svg-ink2 mono" font-size="12">tier:    Choice(criteria={…})</text>
+  <text x="34" y="170" class="svg-ink2 mono" font-size="12">risk:    Score(criteria=[…])</text>
+  <text x="34" y="190" class="svg-ink2 mono" font-size="12">urgent:  Noul(instructions=…)</text>
+  <text x="16" y="210" class="svg-ink mono" font-size="12">}</text>
+  <text x="16" y="240" class="svg-ink3 sans" font-size="11">Every question sees the same state.</text>
+  <text x="16" y="258" class="svg-ink3 sans" font-size="11">None of them sees another's answer.</text>
+
+  <path d="M370 145 L440 145" class="line-acc" marker-end="url(#ara2)"/>
+  <text x="378" y="136" class="svg-acc sans" font-size="11">~100 ms</text>
+
+  <rect x="450" y="10" width="360" height="270" rx="8" class="box"/>
+  <text x="466" y="34" class="svg-acc sans" font-size="13" font-weight="700">RESPONSE</text>
+  <text x="466" y="58" class="svg-ink mono" font-size="12">answers.tier.choice        "high"</text>
+  <text x="466" y="80" class="svg-ink mono" font-size="12">answers.tier.confidence    0.91</text>
+  <text x="466" y="102" class="svg-ink mono" font-size="12">answers.tier.probabilities</text>
+  <g>
+    <rect x="484" y="112" width="180" height="7" rx="3.5" fill="var(--accent)" opacity="0.9"/>
+    <text x="672" y="119" class="svg-ink3 mono" font-size="10">high .78</text>
+    <rect x="484" y="124" width="42" height="7" rx="3.5" fill="var(--accent)" opacity="0.5"/>
+    <text x="672" y="131" class="svg-ink3 mono" font-size="10">med  .18</text>
+    <rect x="484" y="136" width="10" height="7" rx="3.5" fill="var(--accent)" opacity="0.3"/>
+    <text x="672" y="143" class="svg-ink3 mono" font-size="10">low  .04</text>
+  </g>
+  <text x="466" y="172" class="svg-ink mono" font-size="12">answers.risk.score         1.035</text>
+  <text x="466" y="194" class="svg-ink mono" font-size="12">answers.urgent.noul        0.88</text>
+  <text x="466" y="222" class="svg-ink mono" font-size="12">usage.input_tokens         4,218</text>
+  <text x="466" y="244" class="svg-ink mono" font-size="12">usage.output_tokens        0</text>
+  <text x="466" y="268" class="svg-ink3 sans" font-size="11">The distribution is the product. Read it, do not throw it away.</text>
+
+  <defs>
+    <marker id="ara2" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <path d="M0 0 L8 4 L0 8 z" fill="var(--accent)"/>
+    </marker>
+  </defs>
+</svg>
+<figcaption>Log the whole distribution. A hundred 0.51 answers that all came out right tell you something stored labels cannot.</figcaption>
+</figure>
+
+<h2 id="patterns">Five patterns that hold up</h2>
+
+<h3>1. Fan out</h3>
+<p>Ask for everything you might want in one request, including the signals you do not need yet. TypeSafe batched 13 questions against a 53,777-character document and measured it at 12.2× cheaper and 10× faster than 13 separate calls. The reason is the state rather than the questions: sending 53,777 characters once and asking thirteen things beats sending it thirteen times. A fourteenth question costs its own tokens and close to no time.</p>
+
+<h3>2. Gate on confidence, and set a different gate per action</h3>
+<p>The cost of being wrong differs by action, so a single threshold set once for a whole system is wrong nearly everywhere it applies. Showing an account balance to the person who owns the account can run at 0.5, because a wrong answer costs a puzzled user and one more click. Moving money at 0.5 is indefensible. Put the bar where the consequence is, and write the number beside the action it guards rather than in a settings file three directories away.</p>
+
+<pre><code>action = response.answers["intent"]
+
+if action.confidence &lt; 0.5:
+    route_to_human(user_message)             # genuinely unsure
+
+elif action.choice == "check_balance":
+    show_balance(account_id)                 # read-only, low bar
+
+elif action.choice == "approve_transfer":
+    if action.confidence &gt; 0.85:             # money moves, high bar
+        approve_transfer(account_id)
+    else:
+        ask_user_to_confirm("Approve this transfer?")</code></pre>
+
+<figure>
+<svg viewBox="0 0 820 190" role="img" aria-labelledby="d3t">
+  <title id="d3t">Confidence gates set per action</title>
+  <text x="0" y="16" class="svg-ink sans" font-size="13" font-weight="700">One number, three gates, because the actions cost different amounts when wrong</text>
+  <line x1="40" y1="60" x2="780" y2="60" stroke="var(--rule)" stroke-width="10" stroke-linecap="round"/>
+  <line x1="40" y1="60" x2="410" y2="60" stroke="var(--warn)" stroke-width="10" stroke-linecap="round" opacity="0.55"/>
+  <line x1="410" y1="60" x2="670" y2="60" stroke="var(--accent-2)" stroke-width="10" stroke-linecap="round" opacity="0.6"/>
+  <line x1="670" y1="60" x2="780" y2="60" stroke="var(--accent)" stroke-width="10" stroke-linecap="round" opacity="0.8"/>
+  <text x="34" y="86" class="svg-ink3 mono" font-size="11">0.0</text>
+  <text x="396" y="86" class="svg-ink3 mono" font-size="11">0.5</text>
+  <text x="656" y="86" class="svg-ink3 mono" font-size="11">0.85</text>
+  <text x="762" y="86" class="svg-ink3 mono" font-size="11">1.0</text>
+  <text x="60" y="112" class="svg-ink sans" font-size="13" font-weight="700">hand to a human</text>
+  <text x="60" y="130" class="svg-ink3 sans" font-size="11.5">the model is telling you it does not know</text>
+  <text x="424" y="112" class="svg-ink sans" font-size="13" font-weight="700">ask before acting</text>
+  <text x="424" y="130" class="svg-ink3 sans" font-size="11.5">one click from the user settles it</text>
+  <text x="600" y="152" class="svg-ink sans" font-size="13" font-weight="700">act</text>
+  <text x="330" y="170" class="svg-ink3 sans" font-size="11.5">a read-only action can start at 0.5; deleting a table should not</text>
+</svg>
+<figcaption>The middle band is the interesting one. Log every call that lands there, and that log becomes the set you tune the thresholds against.</figcaption>
+</figure>
+
+<h3>3. Composite scoring</h3>
+<p>Split a judgment into dimensions, ask each one on its own, and weight them in code. Asking "how good is this candidate" in a single question hides the weighting inside the model, where you cannot see it, argue with it or change it. Three questions and three weights put the same judgment in front of you.</p>
+
+<pre><code>composite = (
+    0.40 * (response.answers["python_depth"].score / 4) +
+    0.25 * (response.answers["team_leadership"].score / 4) +
+    0.35 * (response.answers["system_design"].score / 4)
+)</code></pre>
+
+<p>The weights then live in a diff, so changing how much system design counts takes a pull request rather than a prompt rewrite.</p>
+
+<h3>4. Cascade</h3>
+<p>Jev routes. Plain code handles the easy cases and a frontier model takes the rest. The expensive model then only sees the requests that need it, and in most systems those are a small share of the traffic. The routing decision costs a fraction of a cent and happens before anything expensive starts.</p>
+
+<pre><code>if intent.confidence &lt; 0.5:
+    return route_to_human(message)
+
+if intent.choice == "order_status":
+    return lookup_order(message)             # pure code, no model
+elif intent.choice == "complaint":
+    if complexity.score &gt; 1:
+        return route_to_human(message)
+    return handle_with_llm(message, SPECIALIST)</code></pre>
+
+<h3>5. Retrieve, then judge</h3>
+<p>Filter in code first and send only the fields the question needs. Two things get worse as you pad the state. Accuracy falls, because the model is reading material with no bearing on what you asked. And you pay for every token of the padding, on every call, forever. A retrieval step that returns the five rows that matter beats one that returns fifty and hopes the model sorts it out.</p>
+
+<h2 id="cannot">What it gets wrong</h2>
+
+<p>TypeSafe publishes its own failure modes, which is more than most model cards do. Almost every item below has the same workaround: do that part in Python, and ask Jev only for the judgment Python cannot make.</p>
+
+<ul>
+  <li><b>It cannot count.</b> Characters in a word, occurrences of a term, items in a list: all unreliable.</li>
+  <li><b>Date and number comparisons fail.</b> Which of two dates came first, how far apart they are, whether two hex colors are close. Do this in Python.</li>
+  <li><b>It reads literally.</b> Negations and scoping words land at face value, so <em>"this is not a refund request"</em> can score high on a refund question.</li>
+  <li><b>Padding costs accuracy.</b> State you did not need for the question drags the answer down.</li>
+  <li><b>User-controlled text steers it.</b> Content written to argue for its own classification moves the answer. Treat state built from user input the way you treat a prompt: untrusted.</li>
+  <li><b>No text, ever.</b> No explanations, no code, no summaries. It takes no images, audio or video.</li>
+  <li><b>Accuracy is 67.8% on TypeSafe's own benchmark</b>, scored against consensus labels from GPT-6 and Claude. TypeSafe ran that evaluation itself, so reproduce it on your own data before you commit to a gate.</li>
+</ul>
+
+<div class="callout">
+  <p><b>PIN THE VERSION.</b> Both SDKs default to <code>jev-latest</code>. The moment you tune a threshold against measured behavior, pin the model (<code>"jev-1.13.0"</code>), or a silent upgrade will move your answers under a gate you calibrated last month.</p>
+</div>
+
+<h2 id="repos">Repos worth reading</h2>
+
+<p>A few hundred projects appeared in the weeks after launch, and <a href="https://github.com/cobanov/awesome-jev">cobanov/awesome-jev</a> tracks them. Most are wrappers. The ones below are worth an hour each, because they show a design decision you would otherwise have to make blind: where to put the threshold, what to do when the model is unsure, and how to keep a fast model from quietly taking over a slow model's job.</p>
+
+<table>
+  <thead><tr><th>Repo</th><th>What it does</th><th>Why read it</th></tr></thead>
+  <tbody>
+    <tr><td><a href="https://github.com/GhalebDweikat/winnow">winnow</a></td><td>Splits Read/Bash/Grep output into 25-line blocks, asks Jev which blocks Claude Code needs, and replaces the rest with a three-line stub and a cache key.</td><td>The closest published thing to context pruning done with judgment. A hundred blocks come back in one call. Its defaults are conservative: <code>WINNOW_DROP=0.1</code>, and never hide a block showing an error.</td></tr>
+    <tr><td><a href="https://github.com/thruwire/foreman">foreman</a></td><td>Watches a Codex worker with nine nouls per cycle: <code>meaningful_progress</code>, <code>worker_stuck</code>, <code>work_off_track</code>, <code>needs_human</code>, <code>ready_to_finish</code> and four more.</td><td>Supervision as a second loop that never touches the agent's tool choice. The policy is a table of thresholds (<code>needs_human</code> 0.80, <code>ready_to_finish</code> 0.85) and the actions are an enum.</td></tr>
+    <tr><td><a href="https://github.com/leepokai/jev-guard">jev-guard</a></td><td>Scores tool-call risk across agents before the call runs.</td><td>The guardrail version of the same idea, one layer earlier than foreman.</td></tr>
+    <tr><td><a href="https://github.com/ekzhang/openjev-sglang">openjev-sglang</a></td><td>Serves the same API from open weights on SGLang, via one-token logprob readout.</td><td>Self-hosting, and the clearest explanation of how a call like this can work.</td></tr>
+    <tr><td><a href="https://github.com/AbdelStark/jev-benchmarks">jev-benchmarks</a> · <a href="https://github.com/abhixhek/jevcal">jevcal</a></td><td>Reproducible evaluation, and fitting confidence thresholds to your own data.</td><td>Use both before trusting a gate. jevcal turns the threshold from a guess into a measurement.</td></tr>
+    <tr><td><a href="https://github.com/typesafe-ai/skills">typesafe-ai/skills</a></td><td>The official agent skill. <code>claude plugin marketplace add typesafe-ai/skills</code>, then <code>claude plugin install typesafe@typesafe-ai</code>.</td><td>Keeps the docs and cookbooks in front of the agent writing your Jev code.</td></tr>
+    <tr><td><a href="https://github.com/sorrycc/typesafe-snake">typesafe-snake</a> · <a href="https://github.com/fhshaik/typesafe-mario">typesafe-mario</a></td><td>One Choice per game tick.</td><td>Toys, and the fastest way to feel what a 100 ms decision loop buys you.</td></tr>
+  </tbody>
+</table>
+
+<p>LangChain shipped <code>langchain-typesafe</code> with two middlewares worth reading before you write your own: <code>ModelRouterMiddleware</code>, which picks a model per request from criteria you write, and <code>AutoModeMiddleware</code>, which blocks risky tool calls before they run.</p>
+
+<h2 id="start">Run it yourself</h2>
+
+<p>One dependency, one environment variable, one file. The script below reads a README — from disk or from a GitHub URL — and asks Jev five questions about it in a single call, using all three question types. None of it is pseudocode: copy it, run it, and the numbers come back from your key rather than from this page.</p>
+
+<pre><code>pip install typesafe-sdk
+export TYPESAFE_API_KEY="sk-..."</code></pre>
+
+<pre><code>"""readme_check.py - ask Jev five questions about a README.
+
+    python readme_check.py                          # ./README.md
+    python readme_check.py path/to/README.md        # any local file
+    python readme_check.py https://github.com/psf/requests
+"""
+import pathlib, sys, urllib.request
+from typesafe_sdk import Choice, Noul, Score, TypeSafeClient
+
+def load(target):
+    """Return (name, text) for a local path or an https URL."""
+    if target.startswith("http://"):
+        sys.exit("https only - point it at the https:// URL instead")
+    if not target.startswith("https://"):
+        path = pathlib.Path(target)
+        if not path.exists():
+            sys.exit(f"no file at {path}")
+        return path.name, path.read_text(encoding="utf-8")
+
+    url, parts = target, target.split("/")
+    if "github.com" in url and "/blob/" in url:            # a file page
+        url = url.replace("github.com", "raw.githubusercontent.com", 1).replace("/blob/", "/", 1)
+    elif "github.com" in url and len(parts) == 5:          # a repo root
+        url = f"https://raw.githubusercontent.com/{parts[3]}/{parts[4]}/HEAD/README.md"
+    with urllib.request.urlopen(url, timeout=20) as response:
+        return url.rsplit("/", 1)[-1], response.read().decode("utf-8", "replace")
+
+name, text = load(sys.argv[1] if len(sys.argv) &gt; 1 else "README.md")
+
+answers = TypeSafeClient().system_one(
+    model="jev-1.13.0",
+    state={"filename": name, "readme": text[:40000]},
+    questions={
+        "audience": Choice(
+            instructions="Who is this README written for",
+            criteria={
+                "user":        "Someone who wants to install and use the thing",
+                "contributor": "Someone who wants to change the code",
+                "evaluator":   "Someone deciding whether to adopt it",
+            },
+        ),
+        "setup": Score(
+            instructions="How complete the setup instructions are",
+            criteria=[
+                "No install or setup steps at all",
+                "Steps exist but assume things they never state",
+                "A reader could follow them start to finish",
+            ],
+        ),
+        "has_example":   Noul(instructions="The document shows at least one worked example"),
+        "explains_auth": Noul(instructions="The document explains how to authenticate"),
+        "sounds_stale":  Noul(instructions="The document mentions versions or features that sound out of date"),
+    },
+).answers
+
+print(name)
+print(f"  written for     {answers['audience'].choice:12} ({answers['audience'].confidence:.2f})")
+print(f"  setup steps     {answers['setup'].score:.1f} / 2")
+print(f"  worked example  {answers['has_example'].noul:.2f}")
+print(f"  auth explained  {answers['explains_auth'].noul:.2f}")
+print(f"  sounds stale    {answers['sounds_stale'].noul:.2f}")
+
+if answers["setup"].score &lt; 1 or answers["has_example"].noul &lt; 0.3:
+    print("\n  -&gt; worth a rewrite before anyone outside the team reads it")</code></pre>
+
+<p><code>load()</code> takes a local path or a URL and works out which it has from the <code>https://</code> prefix. A plain <code>http://</code> URL stops with a message rather than fetching your README in the clear. A GitHub file page and a bare repo URL both get rewritten to their raw form, so <code>python readme_check.py https://github.com/psf/requests</code> reads that project's README without you hunting for the raw link. The fetch uses <code>urllib</code> from the standard library, which keeps the dependency count at one.</p>
+
+<p>The state is a dict with named fields rather than one blob of text. The script truncates the README at 40,000 characters, roughly 10,000 tokens, which keeps five questions well inside the 32,000-token limit and stops a long document from costing accuracy as well as money. The model is pinned, so the thresholds you tune today still mean the same thing next month.</p>
+
+<p>Point it at twenty READMEs you already know well, and read the output against what is in the files. You are not testing whether Jev is clever. You are testing the one claim everything else on this page rests on: that when it says 0.9 it is right about nine times in ten, on your material rather than on TypeSafe's. Twenty documents cost a fraction of a cent and tell you more than any benchmark page can, because no benchmark page has seen your states.</p>
+
+<p>Two experiments follow from there, both in the same file. Add a sixth question and watch the wall-clock barely move, which is fan-out doing its work in front of you. Then change the model back to <code>jev-latest</code> and re-run the same twenty files, which shows you what the pin is protecting.</p>
+
+<h2>Sources</h2>
+<ul class="sources">
+  <li><a href="https://typesafe.ai/blog/introducing-system-one-models-and-jev">Introducing System One Models &amp; Jev</a> — TypeSafe AI</li>
+  <li><a href="https://docs.typesafe.ai/">TypeSafe documentation</a> — primitives, state, HTTP API, patterns</li>
+  <li><a href="https://docs.typesafe.ai/models">docs.typesafe.ai/models</a> — context limits and rate limits, read 19 September 2026; <a href="https://openrouter.ai/typesafe/jev-1.13">OpenRouter</a> lists the same window as 32K</li>
+  <li><a href="https://flaviocopes.com/jev/">A deep look at Jev</a> — Flavio Copes, on the architecture, latency and limits</li>
+  <li><a href="https://dev.to/valyuai/how-to-use-jev-a-practical-guide-to-typesafes-system-one-model-g5e">How to use Jev</a> — practical patterns and failure modes</li>
+  <li><a href="https://www.langchain.com/blog/building-a-harness-with-jev">Building a harness with Jev</a> — LangChain, on routing and guardrail middleware</li>
+  <li><a href="https://github.com/cobanov/awesome-jev">cobanov/awesome-jev</a> — the project list</li>
+  <li><a href="https://github.com/typesafe-ai/typesafe-sdk-python">typesafe-sdk-python</a> · <a href="https://github.com/typesafe-ai/typesafe-sdk-js">typesafe-sdk-js</a> — official SDKs</li>
+  <li><a href="https://www.infoworld.com/article/4223468/typesafe-ais-new-models-work-with-machines-not-humans.html">InfoWorld</a> · <a href="https://www.heise.de/en/news/AI-model-Jev-to-make-machines-decide-faster-11457071.html">heise</a> — press coverage</li>
+</ul>
+
+</div>
+<script>
+document.querySelectorAll('pre').forEach(function (pre) {
+  var wrap = document.createElement('div');
+  wrap.className = 'codewrap';
+  pre.parentNode.insertBefore(wrap, pre);
+  wrap.appendChild(pre);
+
+  var btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'copy-btn';
+  btn.setAttribute('aria-label', 'Copy this code to the clipboard');
+  var icon = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+             'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+             '<rect x="9" y="9" width="13" height="13" rx="2"/>' +
+             '<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+  btn.innerHTML = icon + '<span>Copy</span>';
+  wrap.appendChild(btn);
+
+  btn.addEventListener('click', function () {
+    var text = pre.innerText;
+    function done() {
+      btn.querySelector('span').textContent = 'Copied';
+      btn.classList.add('done');
+      setTimeout(function () {
+        btn.querySelector('span').textContent = 'Copy';
+        btn.classList.remove('done');
+      }, 1400);
+    }
+    function fallback() {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand('copy'); done(); } catch (e) {}
+      ta.remove();
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done, fallback);
+    } else {
+      fallback();
+    }
+  });
+});
+</script>
+</body>
+</html>
