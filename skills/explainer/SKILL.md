@@ -4,14 +4,14 @@ description: Build a self-contained HTML explainer for a technical topic - what 
 license: MIT-0
 metadata:
   author: aarora79
-  version: "1.3"
+  version: "1.4"
 ---
 
 # Explainer
 
 Write the page a smart colleague needs to understand a thing they have never met, and to start building with it the same afternoon.
 
-The output is one HTML file: no build step, no second file, no server. A reader opens it, scrolls once, and knows what the thing is, how it works, where it breaks, and what to try first.
+The output is two files with the same content: an HTML page and its markdown twin. The page is what people read, and it needs no build step and no server. The markdown is what survives a repo, a diff, a pull request comment and a terminal. A reader opens either one, scrolls once, and knows what the thing is, how it works, where it breaks, and what to try first.
 
 ## Two skills, not one
 
@@ -26,7 +26,7 @@ This skill adds what teaching needs on top: the order ideas arrive in, the rule 
 | Topic | yes | A model, a protocol, a library, a paper, a system in your own codebase. |
 | Audience | no | Default: an engineer who is strong elsewhere and new here. |
 | Code language | no | Default: the language the reader will use it from. Pick one and stay in it. |
-| Output path | no | Default `explainers/<topic>-explainer.html` in the repo you are working in. |
+| Output path | no | Default `explainers/<topic>-explainer.html` and `.md` in the repo you are working in. |
 
 ## Step 0 - ask three questions, then commit
 
@@ -157,7 +157,7 @@ Hold the prose to the measure and let the wide things break out of it:
   width: min(100%, var(--wide)); justify-self: center; }
 ```
 
-Seven rules for the file itself:
+Eight rules for the file itself:
 
 - **One file.** CSS inline in a `<style>` block, images as `data:` URIs, no JavaScript unless the page teaches something only interaction can teach.
 - **Fonts.** A Google Fonts `<link>` plus the fallback stack above is enough for a page that lives online. For a page that has to work offline or behind a proxy, pull woff2 from npm (`npm pack @fontsource/inter @fontsource/jetbrains-mono`) and base64-inline them.
@@ -165,7 +165,28 @@ Seven rules for the file itself:
 - **Phone width.** 16px gutter, no horizontal page scroll, tables allowed to scroll inside their own box.
 - **Print.** A small `@media print` block: 11pt body, `break-inside: avoid` on figures, code and tables.
 - **Every code block carries a copy control.** A reader who wants to run your example should not have to select it by hand. A button in the top-right corner of each block, showing a clipboard icon and the word Copy, flipping to Copied for a second after a click. This is the page's only JavaScript: about thirty lines, no dependencies, `navigator.clipboard.writeText` with a hidden-textarea fallback for browsers that refuse it. With JavaScript off the code is still there and still selectable.
+- **A script the reader is meant to run takes its input as an argument**, and accepts both a
+  local path and an `http://` or `https://` URL, working out which it has from the prefix.
+  Fetch the URL with the standard library rather than adding a dependency, and rewrite the
+  obvious host-specific forms — a GitHub file page and a bare repo URL both have a raw
+  equivalent — so the reader can paste the link they already have.
 - **A table of contents** once the page passes six sections.
+
+### The markdown twin
+
+Ship `<name>.md` beside `<name>.html`, same content, same section order, same headings, so a
+link to a section in one lands in the same place in the other.
+
+- **Diagrams become ASCII in a fenced `text` block.** Draw the same mechanism, not a caption
+  apologising for a missing picture. Keep every line under 80 columns so it survives a
+  terminal, a diff and a code review pane.
+- **Tables stay tables. Code blocks keep their language tag.** A fenced block already copies
+  cleanly, so the copy control has no markdown equivalent and needs none.
+- **Generate the markdown from the finished HTML** rather than writing the page twice. A
+  hundred-line converter that walks the top-level elements and substitutes the ASCII art by
+  figure index does it, and keeps the two files from drifting.
+- **Read the markdown once before shipping.** Check that the fences balance, that no raw HTML
+  leaked through, and that every code block still parses.
 
 ## Step 6 - verify before you ship
 
@@ -232,9 +253,11 @@ a caption that repeated the paragraph above it.
 
 ## Ship it
 
-- Write to `explainers/<topic>-explainer.html`, beside the repo it explains when there is one.
+- Write both files to `explainers/<topic>-explainer.html` and `explainers/<topic>-explainer.md`, beside the repo they explain when there is one.
 - **Never add a version suffix to a shipped file.** A second draft overwrites the first.
 - Say in one line what the page covers and where it landed. The reader opens it themselves.
+- **Check the file at the path the reader will open.** A commit on a branch does not change the
+  working copy they have bookmarked.
 
 ## Stay inside the lines
 

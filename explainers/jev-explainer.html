@@ -598,26 +598,41 @@ elif intent.choice == "complaint":
 
 <h2 id="start">Run it yourself</h2>
 
-<p>One dependency, one environment variable, one file. The script below reads a README and asks Jev five questions about it in a single call, using all three question types. None of it is pseudocode: copy it, run it, and the numbers come back from your key rather than from this page.</p>
+<p>One dependency, one environment variable, one file. The script below reads a README — from disk or from a GitHub URL — and asks Jev five questions about it in a single call, using all three question types. None of it is pseudocode: copy it, run it, and the numbers come back from your key rather than from this page.</p>
 
 <pre><code>pip install typesafe-sdk
 export TYPESAFE_API_KEY="sk-..."</code></pre>
 
 <pre><code>"""readme_check.py - ask Jev five questions about a README.
 
-    python readme_check.py                  # reads ./README.md
-    python readme_check.py path/to/README.md
+    python readme_check.py                          # ./README.md
+    python readme_check.py path/to/README.md        # any local file
+    python readme_check.py https://github.com/psf/requests
 """
-import pathlib, sys
+import pathlib, sys, urllib.request
 from typesafe_sdk import Choice, Noul, Score, TypeSafeClient
 
-path = pathlib.Path(sys.argv[1] if len(sys.argv) &gt; 1 else "README.md")
-if not path.exists():
-    sys.exit(f"no file at {path}")
+def load(target):
+    """Return (name, text) for a local path or an http(s) URL."""
+    if not target.startswith(("http://", "https://")):
+        path = pathlib.Path(target)
+        if not path.exists():
+            sys.exit(f"no file at {path}")
+        return path.name, path.read_text(encoding="utf-8")
+
+    url, parts = target, target.split("/")
+    if "github.com" in url and "/blob/" in url:            # a file page
+        url = url.replace("github.com", "raw.githubusercontent.com", 1).replace("/blob/", "/", 1)
+    elif "github.com" in url and len(parts) == 5:          # a repo root
+        url = f"https://raw.githubusercontent.com/{parts[3]}/{parts[4]}/HEAD/README.md"
+    with urllib.request.urlopen(url, timeout=20) as response:
+        return url.rsplit("/", 1)[-1], response.read().decode("utf-8", "replace")
+
+name, text = load(sys.argv[1] if len(sys.argv) &gt; 1 else "README.md")
 
 answers = TypeSafeClient().system_one(
     model="jev-1.13.0",
-    state={"filename": path.name, "readme": path.read_text(encoding="utf-8")[:40000]},
+    state={"filename": name, "readme": text[:40000]},
     questions={
         "audience": Choice(
             instructions="Who is this README written for",
@@ -641,7 +656,7 @@ answers = TypeSafeClient().system_one(
     },
 ).answers
 
-print(path.name)
+print(name)
 print(f"  written for     {answers['audience'].choice:12} ({answers['audience'].confidence:.2f})")
 print(f"  setup steps     {answers['setup'].score:.1f} / 2")
 print(f"  worked example  {answers['has_example'].noul:.2f}")
@@ -650,6 +665,8 @@ print(f"  sounds stale    {answers['sounds_stale'].noul:.2f}")
 
 if answers["setup"].score &lt; 1 or answers["has_example"].noul &lt; 0.3:
     print("\n  -&gt; worth a rewrite before anyone outside the team reads it")</code></pre>
+
+<p><code>load()</code> takes a local path or a URL and works out which it has from the <code>http://</code> or <code>https://</code> prefix. A GitHub file page and a bare repo URL both get rewritten to their raw form, so <code>python readme_check.py https://github.com/psf/requests</code> reads that project's README without you hunting for the raw link. The fetch uses <code>urllib</code> from the standard library, which keeps the dependency count at one.</p>
 
 <p>The state is a dict with named fields rather than one blob of text. The script truncates the README at 40,000 characters, because padding the state costs accuracy as well as money. The model is pinned, so the thresholds you tune today still mean the same thing next month.</p>
 
