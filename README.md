@@ -47,6 +47,11 @@ Rewrites prose so people will actually read it. Applies Orwell's six rules and s
 
 Turns a repository into a printable two-sided A4 poster: a self-contained HTML file, two 300 DPI PNGs, and a print-ready PDF. It mines the README, the docs, and an optional slide deck for content, then builds a dense panel infographic with inlined fonts, a QR code it proves scans, and a chart drawn as inline SVG rather than screenshotted. Use it for conference posters, handouts, and one-pagers.
 
+### explainer
+**Location:** `skills/explainer/`
+
+Builds a self-contained HTML explainer for a technical topic: what it is, how it works, what it cannot do, and what to build with it. It teaches in dependency order, defines every term before using it, and ships one page with inline SVG diagrams, runnable code and dated sources. Pairs with the `writing` skill, which governs the prose. Use it for primers, briefings, onboarding pages and course handouts.
+
 To use a skill with Claude Code or the Claude apps, place its folder where your agent loads skills (for Claude Code, under `.claude/skills/`).
 
 ## Using a prompt
