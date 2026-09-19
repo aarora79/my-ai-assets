@@ -10,46 +10,49 @@
 <style>
   /* Type system: Inter for text, JetBrains Mono for code.
      Body 18px/1.7 over a 64ch measure (~72 characters a line).
-     Colors follow Google's docs palette. */
+     Deep teal carries the structure, amber marks the asides. */
   :root {
     --measure: 64ch;
     --wide: 960px;
     --sans: Inter, Roboto, -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
     --mono: "JetBrains Mono", "Roboto Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
-    --bg: #ffffff;
-    --panel: #f8f9fa;
-    --ink: #202124;
-    --ink-2: #3c4043;
-    --ink-3: #5f6368;
-    --rule: #dadce0;
-    --accent: #1a73e8;
-    --accent-2: #b06000;
-    --warn: #c5221f;
-    --code-bg: #f1f3f4;
-    --code-ink: #202124;
-    --mark: #feefc3;
+    --bg: #fbfaf7;
+    --panel: #ffffff;
+    --ink: #14211f;
+    --ink-2: #33474a;
+    --ink-3: #5b6d6e;
+    --rule: #e4e1d8;
+    --accent: #0b6e6a;
+    --accent-2: #8a5a00;
+    --accent-2-line: #e0a71c;
+    --warn: #a3311f;
+    --code-bg: #f2f1ec;
+    --code-ink: #14211f;
+    --mark: #fdf0c4;
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
-      --bg: #202124;
-      --panel: #292a2d;
-      --ink: #e8eaed;
-      --ink-2: #bdc1c6;
-      --ink-3: #9aa0a6;
-      --rule: #3c4043;
-      --accent: #8ab4f8;
-      --accent-2: #fdd663;
-      --warn: #f28b82;
-      --code-bg: #282a2e;
-      --code-ink: #e8eaed;
-      --mark: #3f3a1f;
+      --bg: #0f1717;
+      --panel: #16201f;
+      --ink: #e6eceb;
+      --ink-2: #b3c2c0;
+      --ink-3: #86999a;
+      --rule: #253331;
+      --accent: #5fd4c4;
+      --accent-2: #f2c14e;
+      --accent-2-line: #f2c14e;
+      --warn: #ef9a8a;
+      --code-bg: #141f1e;
+      --code-ink: #e6eceb;
+      --mark: #3a3113;
     }
   }
   :root[data-theme="dark"] {
-    --bg: #202124; --panel: #292a2d; --ink: #e8eaed; --ink-2: #bdc1c6;
-    --ink-3: #9aa0a6; --rule: #3c4043; --accent: #8ab4f8; --accent-2: #fdd663;
-    --warn: #f28b82; --code-bg: #282a2e; --code-ink: #e8eaed; --mark: #3f3a1f;
+    --bg: #0f1717; --panel: #16201f; --ink: #e6eceb; --ink-2: #b3c2c0;
+    --ink-3: #86999a; --rule: #253331; --accent: #5fd4c4; --accent-2: #f2c14e;
+    --accent-2-line: #f2c14e; --warn: #ef9a8a; --code-bg: #141f1e;
+    --code-ink: #e6eceb; --mark: #3a3113;
   }
   * { box-sizing: border-box; }
   html { -webkit-text-size-adjust: 100%; }
@@ -60,7 +63,7 @@
     -webkit-font-smoothing: antialiased;
   }
 
-  /* Prose sits on a 68ch column; figures, tables and code break out wider. */
+  /* Prose sits on the measure; figures, tables and code break out wider. */
   .wrap {
     display: grid;
     grid-template-columns: 1fr min(var(--measure), 100%) 1fr;
@@ -122,19 +125,19 @@
   td code { white-space: normal; overflow-wrap: anywhere; }
   .idea table { display: block; overflow-x: auto; }
   .callout {
-    border-left: 4px solid var(--accent-2); background: var(--panel);
+    border-left: 4px solid var(--accent-2-line); background: var(--panel);
     padding: 16px 20px; margin: 26px auto; border-radius: 0 8px 8px 0;
   }
   .callout p { max-width: var(--measure); }
   .callout p:last-child { margin-bottom: 0; }
   .callout b { font-size: 14.5px; letter-spacing: 0.04em; font-weight: 600; }
-  .slot { border: 2px dashed var(--accent-2); border-left-width: 4px; background: transparent; }
+  .slot { border: 2px dashed var(--accent-2-line); border-left-width: 4px; background: transparent; }
   .idea { background: var(--panel); border: 1px solid var(--rule); border-radius: 12px; padding: 24px 28px; margin: 28px auto; }
   .idea > h3 { margin-top: 0; }
   .idea p, .idea li, .idea h3, .idea h4, .idea > ol, .idea > ul { max-width: var(--measure); }
   .tag {
     display: inline-block; font-size: 11.5px; letter-spacing: 0.08em; text-transform: uppercase;
-    font-weight: 600; color: var(--accent-2); border: 1px solid var(--accent-2);
+    font-weight: 600; color: var(--accent-2); border: 1px solid var(--accent-2-line);
     padding: 3px 9px; border-radius: 99px; margin-bottom: 12px;
   }
   .sources { font-size: 16px; }
@@ -202,7 +205,7 @@
 
 <h2 id="what">What Jev is</h2>
 
-<p>TypeSafe AI calls Jev a <em>System One model</em>, after Kahneman's fast thinking. The model takes a blob of state and a set of typed questions, and returns an answer for each question with a probability distribution behind it. It writes no text and calls no tools.</p>
+<p>TypeSafe AI calls Jev a <em>System One model</em>, after Kahneman's fast thinking. You hand it <b>state</b>, meaning whatever your program already holds: a support ticket, a file, the last six turns of a conversation. Alongside the state you send a set of typed questions. Jev returns one answer per question, each with a probability distribution behind it. It writes no text and calls no tools.</p>
 
 <p>The company's own line for it: <em>"a frontier-intelligence function call: unstructured state in, typed probabilistic decisions out."</em> That framing matters more than the benchmark. Jev decides. It leaves the writing to something else.</p>
 
@@ -214,7 +217,7 @@
 </div>
 <p class="byline" style="margin-bottom:0">Vendor figures from the TypeSafe launch post and docs, September 2026. Nobody outside the company has reproduced the latency yet.</p>
 
-<p>A frontier LLM asked to classify a support ticket loads the prompt, generates tokens one at a time, stops, and hands you a string you then parse and validate. TypeSafe measured those round trips at 3 to 329 seconds. Jev loads the same state once and reads out every answer in parallel.</p>
+<p>A frontier LLM asked to classify a support ticket loads the prompt and generates one token at a time, feeding each token back in before it picks the next. That loop is what <b>autoregressive</b> means. The model stops, and hands you a string you then parse and validate. TypeSafe measured those round trips at 3 to 329 seconds. Jev loads the same state once and reads out every answer in parallel.</p>
 
 <figure>
 <svg viewBox="0 0 820 330" role="img" aria-labelledby="d1t">
@@ -251,7 +254,7 @@
   <text x="442" y="52" class="svg-ink2 mono" font-size="12">state + 13 questions</text>
   <path d="M520 64 L520 84" class="line-acc" marker-end="url(#ara)"/>
   <rect x="430" y="84" width="380" height="54" rx="6" class="box-acc"/>
-  <text x="444" y="106" class="svg-acc sans" font-size="12" font-weight="700">one prefill over the state</text>
+  <text x="444" y="106" class="svg-acc sans" font-size="12" font-weight="700">one prefill: the state read once</text>
   <text x="444" y="126" class="svg-ink3 sans" font-size="11">each question is scored against it, none sees another's answer</text>
   <g class="line-acc">
     <path d="M480 138 L480 168" marker-end="url(#ara)"/>
@@ -261,21 +264,25 @@
   </g>
   <g>
     <rect x="440" y="168" width="80" height="46" rx="5" class="box"/>
-    <text x="450" y="186" class="svg-ink mono" font-size="11">choice</text>
-    <rect x="450" y="194" width="52" height="6" rx="3" fill="var(--accent)" opacity="0.85"/>
-    <rect x="450" y="203" width="18" height="6" rx="3" fill="var(--accent)" opacity="0.35"/>
+    <text x="450" y="183" class="svg-ink mono" font-size="11">choice</text>
+    <text x="450" y="195" class="svg-ink3 sans" font-size="8.5">pick one</text>
+    <rect x="450" y="200" width="52" height="5" rx="2.5" fill="var(--accent)" opacity="0.85"/>
+    <rect x="450" y="207" width="18" height="5" rx="2.5" fill="var(--accent)" opacity="0.35"/>
     <rect x="520" y="168" width="80" height="46" rx="5" class="box"/>
-    <text x="530" y="186" class="svg-ink mono" font-size="11">score</text>
-    <rect x="530" y="194" width="34" height="6" rx="3" fill="var(--accent)" opacity="0.85"/>
-    <rect x="530" y="203" width="44" height="6" rx="3" fill="var(--accent)" opacity="0.35"/>
+    <text x="530" y="183" class="svg-ink mono" font-size="11">score</text>
+    <text x="530" y="195" class="svg-ink3 sans" font-size="8.5">rate it</text>
+    <rect x="530" y="200" width="34" height="5" rx="2.5" fill="var(--accent)" opacity="0.85"/>
+    <rect x="530" y="207" width="44" height="5" rx="2.5" fill="var(--accent)" opacity="0.35"/>
     <rect x="600" y="168" width="80" height="46" rx="5" class="box"/>
-    <text x="610" y="186" class="svg-ink mono" font-size="11">noul</text>
-    <rect x="610" y="194" width="58" height="6" rx="3" fill="var(--accent)" opacity="0.85"/>
-    <rect x="610" y="203" width="10" height="6" rx="3" fill="var(--accent)" opacity="0.35"/>
+    <text x="610" y="183" class="svg-ink mono" font-size="11">noul</text>
+    <text x="610" y="195" class="svg-ink3 sans" font-size="8.5">true?</text>
+    <rect x="610" y="200" width="58" height="5" rx="2.5" fill="var(--accent)" opacity="0.85"/>
+    <rect x="610" y="207" width="10" height="5" rx="2.5" fill="var(--accent)" opacity="0.35"/>
     <rect x="680" y="168" width="80" height="46" rx="5" class="box"/>
-    <text x="690" y="186" class="svg-ink mono" font-size="11">noul</text>
-    <rect x="690" y="194" width="22" height="6" rx="3" fill="var(--accent)" opacity="0.85"/>
-    <rect x="690" y="203" width="48" height="6" rx="3" fill="var(--accent)" opacity="0.35"/>
+    <text x="690" y="183" class="svg-ink mono" font-size="11">noul</text>
+    <text x="690" y="195" class="svg-ink3 sans" font-size="8.5">true?</text>
+    <rect x="690" y="200" width="22" height="5" rx="2.5" fill="var(--accent)" opacity="0.85"/>
+    <rect x="690" y="207" width="48" height="5" rx="2.5" fill="var(--accent)" opacity="0.35"/>
   </g>
   <path d="M600 214 L600 240" class="line-acc" marker-end="url(#ara)"/>
   <rect x="430" y="240" width="380" height="42" rx="6" class="box"/>
@@ -290,7 +297,7 @@
     </marker>
   </defs>
 </svg>
-<figcaption>The shape of the two calls. On the right, a thirteenth question costs its own tokens and almost no extra time.</figcaption>
+<figcaption>The shape of the two calls. Jev's three question types appear on the right: choice picks an option, score rates against a rubric, noul answers is this true. A thirteenth question there costs its own tokens and almost no extra time.</figcaption>
 </figure>
 
 <h2 id="how">How it answers ten questions in the time an LLM writes one word</h2>
@@ -301,16 +308,16 @@
 
 <p><b>You fix the output space in advance.</b> You declare the options before the call. The model picks among them and reports how the probability mass fell. A malformed answer has nowhere to live, which is why the 0% type-error rate is structural. That claim says nothing about whether the answer is <em>right</em>.</p>
 
-<p><b>Training targeted calibration.</b> TypeSafe trained Jev with Reinforcement Learning for Calibrated Decisions, which rewards probabilities that match outcomes. Over many answers, the ones marked 0.9 should be right about nine times in ten. That property makes the confidence field usable as a gate in code. Test it on your own data before you trust it in production.</p>
+<p><b>Training targeted calibration</b>, which means the probability the model states matches how often that answer turns out right. TypeSafe trained Jev with Reinforcement Learning for Calibrated Decisions, which rewards exactly that. Over many answers, the ones marked 0.9 should be right about nine times in ten. That property makes confidence usable as a gate in code: confidence is the share of the probability mass sitting on the answer the model picked. Test it on your own data before you trust it in production.</p>
 
 <div class="callout">
   <p><b>THE OPEN REPRODUCTION TELLS YOU MORE THAN THE BLOG POST.</b></p>
-  <p><a href="https://github.com/ekzhang/openjev-sglang">openjev-sglang</a> rebuilds the interface on open weights with a one-token readout: prefill the state once, append a per-question suffix, and renormalize the log-probabilities of the label tokens. Labels are <code>A</code>–<code>Z</code> and verified single-token pairs such as <code>AA</code>, so every answer reads out in exactly one token. Jev may not work this way inside. openjev is still the cheapest way to get the same call shape on a model you host, and it runs on SGLang.</p>
+  <p><a href="https://github.com/ekzhang/openjev-sglang">openjev-sglang</a> rebuilds the interface on open weights with a one-token readout: read the state once, append a per-question suffix, then take the model's own scores for the answer labels (its log-probabilities) and renormalize them over those labels alone. Labels are <code>A</code>–<code>Z</code> and verified single-token pairs such as <code>AA</code>, so every answer reads out in exactly one token. Jev may not work this way inside. openjev is still the cheapest way to get the same call shape on a model you host, and it runs on SGLang, an open-source inference server.</p>
 </div>
 
 <h2 id="primitives">The three primitives</h2>
 
-<p>Every question you can ask is one of three types. You mix them in one request.</p>
+<p>Every question you can ask is one of three types. You mix them in one request. Each answer carries its probability distribution and its confidence.</p>
 
 <table>
   <thead><tr><th>Type</th><th>Asks</th><th>Returns</th></tr></thead>
@@ -461,7 +468,7 @@ elif action.choice == "approve_transfer":
   <text x="424" y="112" class="svg-ink sans" font-size="13" font-weight="700">ask before acting</text>
   <text x="424" y="130" class="svg-ink3 sans" font-size="11.5">one click from the user settles it</text>
   <text x="600" y="152" class="svg-ink sans" font-size="13" font-weight="700">act</text>
-  <text x="510" y="170" class="svg-ink3 sans" font-size="11.5">a read-only action can start at 0.5; deleting a table should not</text>
+  <text x="330" y="170" class="svg-ink3 sans" font-size="11.5">a read-only action can start at 0.5; deleting a table should not</text>
 </svg>
 <figcaption>Put the gate where the consequence is, then log every call that fell in the middle band. That log is your threshold-tuning set.</figcaption>
 </figure>
@@ -535,7 +542,7 @@ elif intent.choice == "complaint":
 <div class="idea">
 <span class="tag">Your idea, worked out</span>
 
-<p>Claude Code already records every decision it made and what happened next. That is a labeled dataset sitting on disk, and nobody is using it. Jev turns it into a counterfactual one. At each point where the agent picked a tool, ask Jev what it would have picked. Then read the rest of the transcript for how the agent's choice turned out.</p>
+<p>Claude Code already records every decision it made and what happened next. That is a labeled dataset sitting on disk, and nobody is using it. Jev turns it into a counterfactual one, a record of what a second opinion would have done at each step. At each point where the agent picked a tool, ask Jev what it would have picked. Then read the rest of the transcript for how the agent's choice turned out.</p>
 
 <h3>What the files hold</h3>
 
@@ -751,7 +758,7 @@ def to_row(row, a):
 
 <p>Cost check before you start. A decision point with six turns of context runs maybe 6,000 tokens. Ten thousand of them is 60 million tokens, which at $0.042 per million is <b>$2.52</b> for the whole corpus. The extraction takes longer than the inference.</p>
 
-<p>The live version follows from the offline one. Once the disagreement set shows where Jev is right and the agent is wrong, the same four questions go in a <code>PreToolUse</code> hook: block when <code>p_destructive &gt; 0.8</code>, warn when <code>enough_context</code> is under 0.3. That is <a href="https://github.com/leepokai/jev-guard">jev-guard</a>, built on your own thresholds instead of somebody else's.</p>
+<p>The live version follows from the offline one. Once the disagreement set shows where Jev is right and the agent is wrong, the same four questions go in a <code>PreToolUse</code> hook, the command Claude Code runs before every tool call: block when <code>p_destructive &gt; 0.8</code>, warn when <code>enough_context</code> is under 0.3. That is <a href="https://github.com/leepokai/jev-guard">jev-guard</a>, built on your own thresholds instead of somebody else's.</p>
 
 <div class="callout slot">
   <p><b>SLOT FOR YOUR CONCRETE EXAMPLE.</b></p>
