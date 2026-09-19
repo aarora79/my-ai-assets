@@ -205,7 +205,7 @@ State can be a string, an object, or an array. Use an object. Named fields tell 
     risk:   Score(criteria=[..])     answers.urgent.noul        0.88
     urgent: Noul(instructions=..)
   }                                  usage.input_tokens         4,218
-                                     usage.output_tokens        0
+                                     usage.output_tokens        counted, not billed
   ---------- ~100 ms ---------->
 
   Every question sees the same state. None sees another's answer.
