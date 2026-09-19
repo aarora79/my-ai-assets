@@ -180,6 +180,10 @@ Two rules govern how you write the questions, and breaking the first causes most
 
 One endpoint does everything: `POST https://api.typesafe.ai/v1/systemone`. The body holds `state`, `model` and `questions`. The response holds `model`, `answers` keyed by the ids you chose for your questions, and `usage`. No session, no thread, no conversation history to manage, because nothing carries over from one call to the next. Every call is a function call with its arguments in front of it.
 
+Two limits bound a request, and the second one decides more than the first. The whole request, state and every question together, caps at 64,000 tokens. Each question is then bound on its own: the state plus that one question has to fit in 32,000 tokens. That second number is why third-party listings quote Jev's context window as 32K rather than 64K, and the parallel architecture explains the gap. No question ever sees another question, so what each one gets scored against is the state plus itself. The 64,000 is the ceiling on what you can put on the wire at once.
+
+So the state is the budget, and the questions are cheap. A 30,000-token state leaves room for one question and nothing else. A 5,000-token state leaves room for dozens, which is what makes the fan-out pattern below worth building a habit around. Above that sit the throughput limits, 250,000 tokens a second and 1,200 requests a minute, which TypeSafe says it adjusts without notice.
+
 State can be a string, an object, or an array. Use an object. Named fields tell the model what each part of the state is, so `{"ticket": …, "customer_history": …}` reads differently from the same two blocks of text glued together, where the model has to guess where one ends. Named fields also let you diff one state against another once you start logging every call, which is what you will want the first hour an answer surprises you.
 
 ```text
@@ -389,7 +393,7 @@ if answers["setup"].score < 1 or answers["has_example"].noul < 0.3:
 
 `load()` takes a local path or a URL and works out which it has from the `https://` prefix. A plain `http://` URL stops with a message rather than fetching your README in the clear. A GitHub file page and a bare repo URL both get rewritten to their raw form, so `python readme_check.py https://github.com/psf/requests` reads that project's README without you hunting for the raw link. The fetch uses `urllib` from the standard library, which keeps the dependency count at one.
 
-The state is a dict with named fields rather than one blob of text. The script truncates the README at 40,000 characters, because padding the state costs accuracy as well as money. The model is pinned, so the thresholds you tune today still mean the same thing next month.
+The state is a dict with named fields rather than one blob of text. The script truncates the README at 40,000 characters, roughly 10,000 tokens, which keeps five questions well inside the 32,000-token limit and stops a long document from costing accuracy as well as money. The model is pinned, so the thresholds you tune today still mean the same thing next month.
 
 Point it at twenty READMEs you already know well, and read the output against what is in the files. You are not testing whether Jev is clever. You are testing the one claim everything else on this page rests on: that when it says 0.9 it is right about nine times in ten, on your material rather than on TypeSafe's. Twenty documents cost a fraction of a cent and tell you more than any benchmark page can, because no benchmark page has seen your states.
 
@@ -399,6 +403,7 @@ Two experiments follow from there, both in the same file. Add a sixth question a
 
 - [Introducing System One Models & Jev](https://typesafe.ai/blog/introducing-system-one-models-and-jev) — TypeSafe AI
 - [TypeSafe documentation](https://docs.typesafe.ai/) — primitives, state, HTTP API, patterns
+- [docs.typesafe.ai/models](https://docs.typesafe.ai/models) — context limits and rate limits, read 19 September 2026; [OpenRouter](https://openrouter.ai/typesafe/jev-1.13) lists the same window as 32K
 - [A deep look at Jev](https://flaviocopes.com/jev/) — Flavio Copes, on the architecture, latency and limits
 - [How to use Jev](https://dev.to/valyuai/how-to-use-jev-a-practical-guide-to-typesafes-system-one-model-g5e) — practical patterns and failure modes
 - [Building a harness with Jev](https://www.langchain.com/blog/building-a-harness-with-jev) — LangChain, on routing and guardrail middleware

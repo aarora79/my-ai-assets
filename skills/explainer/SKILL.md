@@ -4,14 +4,14 @@ description: Build a self-contained HTML explainer for a technical topic - what 
 license: MIT-0
 metadata:
   author: aarora79
-  version: "1.4"
+  version: "1.5"
 ---
 
 # Explainer
 
 Write the page a smart colleague needs to understand a thing they have never met, and to start building with it the same afternoon.
 
-The output is two files with the same content: an HTML page and its markdown twin. The page is what people read, and it needs no build step and no server. The markdown is what survives a repo, a diff, a pull request comment and a terminal. A reader opens either one, scrolls once, and knows what the thing is, how it works, where it breaks, and what to try first.
+The output is a folder: an HTML page, its markdown twin, and a printable poster. The page is what people read, and it needs no build step and no server. The markdown is what survives a repo, a diff, a pull request comment and a terminal. A reader opens either one, scrolls once, and knows what the thing is, how it works, where it breaks, and what to try first.
 
 ## Two skills, not one
 
@@ -26,7 +26,7 @@ This skill adds what teaching needs on top: the order ideas arrive in, the rule 
 | Topic | yes | A model, a protocol, a library, a paper, a system in your own codebase. |
 | Audience | no | Default: an engineer who is strong elsewhere and new here. |
 | Code language | no | Default: the language the reader will use it from. Pick one and stay in it. |
-| Output path | no | Default `explainers/<topic>-explainer.html` and `.md` in the repo you are working in. |
+| Output path | no | Default `explainers/<topic>/` in the repo you are working in. |
 
 ## Step 0 - ask three questions, then commit
 
@@ -189,6 +189,25 @@ link to a section in one lands in the same place in the other.
 - **Read the markdown once before shipping.** Check that the fences balance, that no raw HTML
   leaked through, and that every code block still parses.
 
+### The poster
+
+An explainer earns a poster when somebody will present it, print it or pin it up. Once the HTML
+and the markdown are done, build one with the `poster-making` skill in this repo
+(`skills/poster-making/`). Read that skill and follow it rather than improvising: it carries the
+design system, the fit loop and its own verification pass.
+
+The explainer is the source, and the poster is the same argument at poster density rather than a
+summary of it: the problem made concrete, the numbers as tiles, the mechanism, one worked
+example, the limits, and a QR to the full page.
+
+- **The QR points at the markdown twin** in the repo, so a phone camera lands on something
+  readable rather than raw HTML.
+- **The chart comes from the explainer's own numbers**, drawn as inline SVG.
+- **Four files land in `<topic>/poster/`**: the HTML, two 300 DPI PNGs and the PDF.
+- **Run the poster skill's checks before handing it over**: both PNGs 2481x3509, both QRs decoded
+  back out of the rendered images, the PDF two pages at 209.9 x 297.0 mm, both pages reporting
+  `sh == ch`, and no banned strings.
+
 ## Step 6 - verify before you ship
 
 Run all of it. Every check has caught something real.
@@ -254,7 +273,22 @@ a caption that repeated the paragraph above it.
 
 ## Ship it
 
-- Write both files to `explainers/<topic>-explainer.html` and `explainers/<topic>-explainer.md`, beside the repo they explain when there is one.
+- One folder per explainer, so everything about a topic travels together:
+
+```
+explainers/<topic>/
+  <topic>-explainer.html
+  <topic>-explainer.md
+  poster/
+    <topic>-poster.html
+    <topic>-poster-front.png
+    <topic>-poster-back.png
+    <topic>-poster.pdf
+```
+
+- Keep the topic in every filename even though the folder already carries it. These files travel:
+  downloaded, emailed, dropped into a slide. A file called `explainer.html` on somebody's desktop
+  has lost its name.
 - **Never add a version suffix to a shipped file.** A second draft overwrites the first.
 - Say in one line what the page covers and where it landed. The reader opens it themselves.
 - **Check the file at the path the reader will open.** A commit on a branch does not change the
