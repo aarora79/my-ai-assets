@@ -13,7 +13,6 @@
      Deep teal carries the structure, amber marks the asides. */
   :root {
     --measure: 64ch;
-    --wide: 960px;
     --sans: Inter, Roboto, -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
     --mono: "JetBrains Mono", "Roboto Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
@@ -63,17 +62,14 @@
     -webkit-font-smoothing: antialiased;
   }
 
-  /* Prose sits on the measure; figures, tables and code break out wider. */
+  /* Everything sits on one column, so prose, figures, tables and code
+     share the same left and right edge. */
   .wrap {
     display: grid;
     grid-template-columns: 1fr min(var(--measure), 100%) 1fr;
     padding: 0 16px 120px;
   }
   .wrap > * { grid-column: 2; }
-  .wrap > figure, .wrap > table, .wrap > pre, .wrap > .num-strip,
-  .wrap > .idea, .wrap > .toc, .wrap > .callout {
-    grid-column: 1 / -1; width: min(100%, var(--wide)); justify-self: center;
-  }
 
   header.top { padding: 72px 0 32px; border-bottom: 1px solid var(--rule); }
   h1 {
@@ -106,13 +102,13 @@
   pre code { background: none; padding: 0; font-size: inherit; }
 
   .num-strip {
-    display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(155px, 1fr));
     gap: 1px; background: var(--rule); border: 1px solid var(--rule);
     border-radius: 8px; overflow: hidden; margin: 30px 0 8px;
   }
-  .num { background: var(--panel); padding: 18px 16px; }
-  .num b { display: block; font-size: 27px; line-height: 1.2; color: var(--accent); letter-spacing: -0.02em; font-weight: 600; }
-  .num span { display: block; font-size: 14.5px; line-height: 1.45; color: var(--ink-3); margin-top: 6px; }
+  .num { background: var(--panel); padding: 16px 14px; }
+  .num b { display: block; font-size: 23px; line-height: 1.25; color: var(--accent); letter-spacing: -0.02em; font-weight: 600; white-space: nowrap; }
+  .num span { display: block; font-size: 13.5px; line-height: 1.45; color: var(--ink-3); margin-top: 6px; }
   figure { margin: 34px 0; }
   figure svg { width: 100%; height: auto; display: block; }
   figcaption { font-size: 14.5px; line-height: 1.55; color: var(--ink-3); margin-top: 12px; max-width: var(--measure); }
@@ -126,13 +122,13 @@
   .idea table { display: block; overflow-x: auto; }
   .callout {
     border-left: 4px solid var(--accent-2-line); background: var(--panel);
-    padding: 16px 20px; margin: 26px auto; border-radius: 0 8px 8px 0;
+    padding: 16px 20px; margin: 26px 0; border-radius: 0 8px 8px 0;
   }
   .callout p { max-width: var(--measure); }
   .callout p:last-child { margin-bottom: 0; }
   .callout b { font-size: 14.5px; letter-spacing: 0.04em; font-weight: 600; }
   .slot { border: 2px dashed var(--accent-2-line); border-left-width: 4px; background: transparent; }
-  .idea { background: var(--panel); border: 1px solid var(--rule); border-radius: 12px; padding: 24px 28px; margin: 28px auto; }
+  .idea { background: var(--panel); border: 1px solid var(--rule); border-radius: 12px; padding: 22px 24px; margin: 28px 0; }
   .idea > h3 { margin-top: 0; }
   .idea p, .idea li, .idea h3, .idea h4, .idea > ol, .idea > ul { max-width: var(--measure); }
   .tag {
@@ -142,7 +138,7 @@
   }
   .sources { font-size: 16px; }
   .sources li { margin-bottom: 7px; }
-  .toc { background: var(--panel); border: 1px solid var(--rule); border-radius: 12px; padding: 20px 26px; margin: 36px auto; font-size: 16px; }
+  .toc { background: var(--panel); border: 1px solid var(--rule); border-radius: 12px; padding: 20px 24px; margin: 36px 0; font-size: 16px; }
   .toc ol { margin: 0; padding-left: 22px; }
   .toc li { margin-bottom: 6px; }
   mark { background: var(--mark); color: inherit; padding: 0 2px; }
@@ -183,7 +179,7 @@
 
 <header class="top">
   <h1>Jev: a model that decides instead of writing</h1>
-  <p class="standfirst">TypeSafe AI shipped a model that answers typed questions in about a tenth of a second and never returns prose. This covers how it works, what people have built with it, and two things worth building on our own work.</p>
+  <p class="standfirst">TypeSafe AI shipped a model that answers typed questions in about a tenth of a second and never returns prose. This covers how it works, what people have built with it, and one idea worth building on top of work you already have.</p>
   <p class="byline">Written 19 September 2026 · all numbers dated and attributed · code samples in Python</p>
 </header>
 
@@ -191,14 +187,14 @@
   <ol>
     <li><a href="#what">What Jev is</a></li>
     <li><a href="#how">How it answers ten questions in the time an LLM writes one word</a></li>
+    <li><a href="#example">One call, start to finish</a></li>
     <li><a href="#primitives">The three primitives</a></li>
     <li><a href="#api">The request and the response</a></li>
     <li><a href="#patterns">Five patterns that hold up</a></li>
     <li><a href="#cannot">What it gets wrong</a></li>
     <li><a href="#repos">Repos worth reading</a></li>
-    <li><a href="#idea1">Build idea 1: mine Claude Code transcripts into a decision dataset</a></li>
-    <li><a href="#idea2">Build idea 2: give swe-router a typed judgment</a></li>
-    <li><a href="#more">Six more ideas</a></li>
+    <li><a href="#idea1">Build it: mine Claude Code transcripts into a decision dataset</a></li>
+    <li><a href="#more">Four more ideas</a></li>
     <li><a href="#start">Twenty minutes to first answer</a></li>
   </ol>
 </div>
@@ -320,6 +316,87 @@
   <p><b>THE OPEN REPRODUCTION TELLS YOU MORE THAN THE BLOG POST.</b></p>
   <p>Jev itself is closed, so the mechanism above comes from what TypeSafe chooses to publish. The cheapest way to see how a call like this can work is to read somebody rebuilding it on parts you can inspect. <a href="https://github.com/ekzhang/openjev-sglang">openjev-sglang</a> rebuilds the interface on open weights with a one-token readout: read the state once, append a per-question suffix, then take the model's own scores for the answer labels (its log-probabilities) and renormalize them over those labels alone. Labels are <code>A</code>–<code>Z</code> and verified single-token pairs such as <code>AA</code>, so every answer reads out in exactly one token. Jev may not work this way inside. openjev is still the cheapest way to get the same call shape on a model you host, and it runs on SGLang, an open-source inference server.</p>
 </div>
+
+<h2 id="example">One call, start to finish</h2>
+
+<p>Here is a whole call, with real state and one question of each type, small enough to read in a minute.</p>
+
+<p>A support ticket arrives. Three things have to happen to it: it goes to a team, somebody decides how urgently, and the billing system may need to cut a refund. Three decisions over one piece of text, which is the shape Jev is built for.</p>
+
+<pre><code>from typesafe_sdk import Choice, Noul, Score, TypeSafeClient
+
+client = TypeSafeClient()
+
+ticket = """I have been charged twice for order A-104. The second charge
+hit this morning. I have emailed twice and nobody has replied.
+Please refund the duplicate today."""
+
+answers = client.system_one(
+    model="jev-1.13.0",
+    state={"ticket": ticket},
+    questions={
+        # Choice: pick exactly one of the options you list
+        "team": Choice(
+            instructions="Which team should handle this ticket",
+            criteria={
+                "billing":   "Charges, invoices, refunds",
+                "technical": "Something is broken or behaving wrong",
+                "sales":     "Pricing, plans, account changes",
+            },
+        ),
+        # Score: place the ticket on a rubric you order yourself
+        "anger": Score(
+            instructions="How angry the customer sounds",
+            criteria=[
+                "Calm, stating facts",
+                "Frustrated but civil",
+                "Furious, threatening to leave",
+            ],
+        ),
+        # Noul: one statement, answered as a probability
+        "wants_refund": Noul(
+            instructions="The customer is asking for money back",
+        ),
+    },
+).answers</code></pre>
+
+<p>That is one request and one round trip, whatever the three questions happen to be. Printing what came back:</p>
+
+<pre><code>answers["team"].choice           # "billing"
+answers["team"].confidence       # 0.94
+answers["team"].probabilities    # {"billing": 0.94, "technical": 0.04, "sales": 0.02}
+
+answers["anger"].score           # 1.4
+answers["wants_refund"].noul     # 0.97</code></pre>
+
+<p class="byline" style="margin-bottom:22px">Illustrative values rather than a recorded run. The field shapes come from TypeSafe's SDK docs; the numbers are what a call like this returns.</p>
+
+<p>Read them one at a time, because each type answers a different kind of question about the same text.</p>
+
+<ul>
+  <li><code>team.choice</code> is one of the three strings you listed and cannot be anything else, so the next line of your code switches on it without a branch for surprises.</li>
+  <li><code>team.probabilities</code> shows where the rest of the mass went. At 0.94 against 0.04 and 0.02 the model was not torn. A ticket that came back 0.51 billing and 0.47 technical is the one you want a human to look at, and the distribution is the only place that shows up.</li>
+  <li><code>anger.score</code> is 1.4 on the three-level rubric you wrote, which is numbered 0, 1 and 2 in the order you gave them. It sits between "frustrated but civil" and "furious", which tells you more than either label alone. Scores landing between levels are normal, so treat the rubric as a ruler rather than three boxes.</li>
+  <li><code>wants_refund.noul</code> is 0.97, a probability rather than a yes. A noul carries no separate confidence field, because the number already is the confidence.</li>
+</ul>
+
+<p>Now the part that pays for the call. All of it is ordinary Python, and none of it parses anything.</p>
+
+<pre><code>team = answers["team"]
+if team.confidence &lt; 0.6:
+    queue_for_human(ticket)                  # the model is telling you it is unsure
+else:
+    assign(ticket, team.choice)
+
+if answers["anger"].score &gt; 1.2:
+    mark_priority(ticket)                    # angry enough to jump the queue
+
+if answers["wants_refund"].noul &gt; 0.9:
+    open_refund_case(ticket, amount="auto")  # money moves, so the bar is high</code></pre>
+
+<p>Three thresholds at three different heights, each written next to the action it guards. Sending money needs 0.9; putting a ticket in a queue needs 0.6; nothing needs a retry loop or a schema validator.</p>
+
+<p>What it cost: the ticket runs about 60 tokens and the questions with their criteria maybe 120 more. At $0.042 per million input tokens, those 180 tokens come to $0.0000076, and the answers land in roughly a tenth of a second. Those two numbers are why the patterns further down are worth the trouble.</p>
 
 <h2 id="primitives">The three primitives</h2>
 
@@ -543,7 +620,7 @@ elif intent.choice == "complaint":
 
 <p>LangChain shipped <code>langchain-typesafe</code> with two middlewares that land close to our work: <code>ModelRouterMiddleware</code>, which picks a model per request from criteria you write, and <code>AutoModeMiddleware</code>, which blocks risky tool calls before they run.</p>
 
-<h2 id="idea1">Build idea 1: mine Claude Code transcripts into a decision dataset</h2>
+<h2 id="idea1">Build it: mine Claude Code transcripts into a decision dataset</h2>
 
 <div class="idea">
 <span class="tag">Your idea, worked out</span>
@@ -774,130 +851,13 @@ def to_row(row, a):
 </div>
 </div>
 
-<h2 id="idea2">Build idea 2: give swe-router a typed judgment</h2>
-
-<div class="idea">
-<span class="tag">Your idea, worked out</span>
-
-<p>The <code>swe-router</code> skill in <code>vend/</code> already splits in two. <code>route.py</code> does arithmetic over <code>models.json</code> — 18 models, 21 tasks, scores by complexity tier, cost per task, a 3-point noise band. That half is deterministic and testable. The other half asks a frontier model to read the repo and place the task in one of four tiers, <code>trivial</code> to <code>high</code>. It then sets a floor of 55, 65, 70 or 75 by judging what breaks if the change is wrong.</p>
-
-<p>That second half is a System One job wearing a frontier model's clothes. Look at what it produces: four values, none of them prose, all of them fed straight into a lookup table. Today that costs a slice of an Opus turn and takes as long as a paragraph takes to write, and the answer changes a little each time you run it, because prose judgment does.</p>
-
-<figure>
-<svg viewBox="0 0 820 300" role="img" aria-labelledby="d5t">
-  <title id="d5t">swe-router today and with Jev supplying the tier and floor</title>
-  <text x="0" y="16" class="svg-ink sans" font-size="13" font-weight="700">Today</text>
-  <rect x="0" y="28" width="360" height="98" rx="7" class="box"/>
-  <text x="16" y="52" class="svg-ink2 sans" font-size="12">the agent reads AGENTS.md and the task,</text>
-  <text x="16" y="70" class="svg-ink2 sans" font-size="12">judges tier and consequence in prose,</text>
-  <text x="16" y="88" class="svg-ink2 sans" font-size="12">writes two numbers into a shell command</text>
-  <text x="16" y="112" class="svg-ink3 sans" font-size="11">seconds · unlogged · different on a re-run</text>
-  <path d="M180 126 L180 152" class="line" marker-end="url(#ar5)"/>
-
-  <text x="450" y="16" class="svg-acc sans" font-size="13" font-weight="700">With Jev</text>
-  <rect x="450" y="28" width="370" height="98" rx="7" class="box-acc"/>
-  <text x="466" y="50" class="svg-ink2 mono" font-size="11.5">tier         Choice(trivial|low|medium|high)</text>
-  <text x="466" y="68" class="svg-ink2 mono" font-size="11.5">consequence  Choice(proto|internal|prod|sensitive)</text>
-  <text x="466" y="86" class="svg-ink2 mono" font-size="11.5">hinges       Noul  → floor + 5</text>
-  <text x="466" y="104" class="svg-ink2 mono" font-size="11.5">beyond_range Noul  → do not recommend down</text>
-  <text x="466" y="122" class="svg-ink3 sans" font-size="11">~100 ms · every probability logged · reproducible</text>
-  <path d="M635 126 L635 152" class="line-acc" marker-end="url(#ara5)"/>
-
-  <rect x="100" y="152" width="620" height="54" rx="7" class="box"/>
-  <text x="120" y="176" class="svg-ink sans" font-size="12.5" font-weight="700">python3 route.py --tier high --floor 75</text>
-  <text x="120" y="196" class="svg-ink3 sans" font-size="11">unchanged: reads allowed-models.txt, ranks by score_by_complexity, takes the cheapest above the floor</text>
-  <path d="M410 206 L410 232" class="line" marker-end="url(#ar5)"/>
-
-  <rect x="100" y="232" width="620" height="48" rx="7" class="box"/>
-  <text x="120" y="254" class="svg-ink mono" font-size="12">Recommendation: switch to claude-sonnet-5</text>
-  <text x="120" y="272" class="svg-ink3 sans" font-size="11">plus the two probabilities that produced the floor, so a developer can argue with the input rather than the verdict</text>
-
-  <defs>
-    <marker id="ar5" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8 z" fill="var(--ink-3)"/></marker>
-    <marker id="ara5" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8 z" fill="var(--accent)"/></marker>
-  </defs>
-</svg>
-<figcaption>The arithmetic half of the skill does not change. The judgment half becomes four typed answers with probabilities attached.</figcaption>
-</figure>
-
-<pre><code>import json, subprocess
-from typesafe_sdk import Choice, Noul, TypeSafeClient
-
-FLOORS = {"prototype": 55, "internal": 65, "production": 70, "sensitive": 75}
-client = TypeSafeClient()
-
-def classify(task, repo_map, touched_paths):
-    a = client.system_one(
-        model="jev-1.13.0",
-        state={"task": task, "repo_map": repo_map, "files": touched_paths},
-        questions={
-            "tier": Choice(
-                instructions="How big is this change",
-                criteria={
-                    "trivial": "A docs page, one render condition, two config passthroughs",
-                    "low":     "A default changed across a couple of files, one small feature",
-                    "medium":  "A feature across several files, a config surface, a template rewrite",
-                    "high":    "A subsystem: rate limiting, token storage, a new authenticated endpoint",
-                },
-            ),
-            "consequence": Choice(
-                instructions="What breaks if this change is wrong",
-                criteria={
-                    "prototype": "A spike or scratch script; nobody merges it",
-                    "internal":  "An internal tool, a test fixture, a docs page; a human reads it first",
-                    "production":"A production service or anything users touch",
-                    "sensitive": "Auth, payments, data deletion, a security path",
-                },
-            ),
-            "hinges_on_one_thing": Noul(
-                instructions="The task turns on one exact detail: an API contract, a security "
-                             "invariant, a portability trap, a version comparison"),
-            "beyond_measured_range": Noul(
-                instructions="The change spans several services, ports a language, "
-                             "or rewrites a framework"),
-        },
-    ).answers
-
-    floor = FLOORS[a["consequence"].choice]
-    if a["hinges_on_one_thing"].noul &gt; 0.6:
-        floor += 5
-    return a, a["tier"].choice, floor
-
-def route(task, repo_map, touched_paths):
-    a, tier, floor = classify(task, repo_map, touched_paths)
-
-    if a["consequence"].confidence &lt; 0.6:
-        return ask_developer_one_question(a["consequence"].probabilities)
-    if a["beyond_measured_range"].noul &gt; 0.7:
-        return recommend_strongest("the benchmark does not reach this far")
-
-    out = subprocess.run(
-        ["python3", "route.py", "--tier", tier, "--floor", str(floor)],
-        capture_output=True, text=True, check=True,
-    )
-    return json.loads(out.stdout), a</code></pre>
-
-<p>Four things change, and each one is worth having even without the other three.</p>
-
-<ul>
-  <li><b>The skill runs without a frontier model.</b> Today it needs an agent to read the repo and form a view. With Jev doing that in 100 ms for a fraction of a cent, the router fits in a pre-commit hook, a CI gate, or a wrapper that picks the model before the agent starts.</li>
-  <li><b>The floor stops drifting.</b> Prose judgment of "what breaks if this is wrong" varies between runs of the same model. A pinned Jev version with fixed criteria does not.</li>
-  <li><b>The confidence answers a question the skill already asks.</b> SKILL.md says to ask the developer only when the repo does not settle it, and leaves that call to the agent. <code>consequence.confidence &lt; 0.6</code> is that rule as a number.</li>
-  <li><b>You get a second dataset.</b> Log the probabilities beside the recommendation and the task outcome. After a hundred routed tasks you can ask whether the tasks routed to a cheaper model came back worse, which is the question the 21-task benchmark cannot answer on its own.</li>
-</ul>
-
-<p>One caution, from your own SKILL.md. Jev cannot compare numbers, so keep every threshold in Python: the 3-point noise band, the <code>margin_is_meaningful</code> test, the completion counts. Ask Jev what kind of change this is, then let <code>route.py</code> turn that into a model.</p>
-</div>
-
-<h2 id="more">Six more ideas</h2>
+<h2 id="more">Four more ideas</h2>
 
 <ol>
   <li><b>Tool selection for the MCP Gateway Registry.</b> A registry with hundreds of tools cannot put every schema in the context. One <code>Choice</code> over tool names with one-line criteria, run against the user's request, narrows it to five before the agent sees anything. The registry already holds the descriptions the criteria need.</li>
-  <li><b>Context pruning for the harness.</b> winnow's approach, applied inside the benchmark harness: judge each block of tool output for relevance, stub the rest. Then measure whether the 21-task scores move. A cheaper context that holds the score is a result worth publishing.</li>
-  <li><b>Triage the benchmark judge.</b> Judging six artifacts per task with <code>gpt-5.6-sol</code> at high reasoning effort is the expensive part of a benchmark run. Use Jev for the mechanical checks — did the patch touch the files the spec named, does the testing plan mention the changed paths — and save the frontier judge for the scoring that needs reading.</li>
   <li><b>Assignment feedback that arrives before the deadline.</b> For the Georgetown course, a rubric as five <code>Score</code> questions over a submitted notebook returns a provisional read in under a second per student. Publish the rubric criteria as the assignment spec and the students can run it themselves.</li>
   <li><b>Log triage.</b> <a href="https://github.com/reachjalil/jevlogs">jevlogs</a> does this for OpenTelemetry: one noul per line for "this needs a human tonight". The same shape works for a CloudWatch stream in front of a pager.</li>
-  <li><b>Self-hosted A/B.</b> Stand up <a href="https://github.com/ekzhang/openjev-sglang">openjev-sglang</a> on a model you already serve, run the same question set against both, and compare accuracy and cost per thousand decisions. That is a direct extension of the self-hosted-versus-Bedrock cost work in the benchmarks repo, applied to decisions instead of patches.</li>
+  <li><b>Self-hosted A/B.</b> Stand up <a href="https://github.com/ekzhang/openjev-sglang">openjev-sglang</a> on a model you already serve, run the same question set through both it and Jev, and compare accuracy and cost per thousand decisions. Nobody has published that comparison, so whatever you measure is new information.</li>
 </ol>
 
 <h2 id="start">Twenty minutes to first answer</h2>
@@ -932,7 +892,6 @@ for k, v in r.answers.items():
   <li><a href="https://github.com/typesafe-ai/typesafe-sdk-python">typesafe-sdk-python</a> · <a href="https://github.com/typesafe-ai/typesafe-sdk-js">typesafe-sdk-js</a> — official SDKs</li>
   <li><a href="https://www.infoworld.com/article/4223468/typesafe-ais-new-models-work-with-machines-not-humans.html">InfoWorld</a> · <a href="https://www.heise.de/en/news/AI-model-Jev-to-make-machines-decide-faster-11457071.html">heise</a> — press coverage</li>
   <li>Transcript record shapes: sampled from <code>%USERPROFILE%\.claude\projects\c--Users-aroraai-Downloads-my-work-SFDC\395c0861-….jsonl</code>, 19 September 2026</li>
-  <li>swe-router details: <code>vend/swe-router/SKILL.md</code> and <code>models.json</code>, provenance dated 10 September 2026</li>
 </ul>
 
 </div>
