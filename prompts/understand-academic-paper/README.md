@@ -1,5 +1,11 @@
 # Academic Paper Analysis Prompt Generator
 
+> **Where the analyses live.** This folder holds the tooling only: the template, the
+> generator and an example URL list. The ten paper analyses produced with it moved to
+> [personal-knowledge-base/analyses/](https://github.com/aarora79/personal-knowledge-base/tree/main/analyses)
+> on 2026-09-22, alongside the clipped sources and wiki articles for the same papers.
+> The live reading queue moved there too, as `inbox.md`.
+
 A Python tool that generates structured prompts for analyzing academic papers using the Feynman Technique. This tool reads a list of URLs and creates folders with hydrated analysis prompts for each paper.
 
 ## Prerequisites
@@ -29,17 +35,17 @@ https://onlinelibrary.wiley.com/doi/10.1111/j.1468-0335.1937.tb00002.x
 
 2. Generate prompts:
 ```bash
-uv run python generate_prompts.py urls.txt
+uv run python generate_prompts.py urls.example.txt
 ```
 
 ### Advanced Usage
 
 ```bash
 # Specify custom output directory
-uv run python generate_prompts.py urls.txt --output-dir /path/to/output
+uv run python generate_prompts.py urls.example.txt --output-dir /path/to/output
 
 # Enable debug logging
-uv run python generate_prompts.py urls.txt --debug
+uv run python generate_prompts.py urls.example.txt --debug
 
 # Show help
 uv run python generate_prompts.py --help
@@ -51,7 +57,7 @@ uv run python generate_prompts.py --help
 - Empty lines are ignored
 - Lines starting with `#` are treated as comments and ignored
 
-Example `urls.txt`:
+Example `urls.example.txt`:
 ```
 # AI/ML Papers
 https://arxiv.org/pdf/2509.07604

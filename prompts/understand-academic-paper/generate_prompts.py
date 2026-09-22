@@ -148,11 +148,11 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Example usage:
-    # Create prompts from urls.txt in current directory
-    python generate_prompts.py urls.txt
+    # Create prompts from urls.example.txt in current directory
+    python generate_prompts.py urls.example.txt
 
     # Specify custom output directory
-    python generate_prompts.py urls.txt --output-dir /path/to/output
+    python generate_prompts.py urls.example.txt --output-dir /path/to/output
 
 URL file format:
     One URL per line, empty lines and lines starting with # are ignored.

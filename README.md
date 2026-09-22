@@ -12,7 +12,7 @@ This repository holds two kinds of AI assets:
 ## Prompts
 
 ### 1. Academic Paper Analysis (Feynman Technique)
-**Location:** `prompts/understand-academic-paper/`
+**Location:** `prompts/understand-academic-paper/` (tooling only; the analyses it produced live in [personal-knowledge-base/analyses/](https://github.com/aarora79/personal-knowledge-base/tree/main/analyses))
 
 Analyzes academic papers using the Feynman Technique to break down complex research into understandable concepts. The prompt guides through:
 - Core concept identification in simple language
