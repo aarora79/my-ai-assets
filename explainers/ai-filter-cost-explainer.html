@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Costing AI-powered SQL filters — how it works</title>
+<style>
+  :root {
+    --bg: #fffdf5; --surface: #ffffff; --ink: #1d2b2a; --muted: #52615f;
+    --teal: #0f766e; --teal-soft: #e0f2ef; --yellow: #f5c518; --yellow-soft: #fff6cc;
+    --line: #e4e0d0; --code: #f3f1e8;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #10191a; --surface: #172224; --ink: #e8efee; --muted: #9fb2b0;
+      --teal: #4fd1c1; --teal-soft: #173a38; --yellow: #f5c518; --yellow-soft: #3a3312;
+      --line: #2a3a3b; --code: #1f2c2e;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+    font: 16px/1.6 -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  main { max-width: 860px; margin: 0 auto; padding: 32px 16px 64px; }
+  header { border-left: 6px solid var(--yellow); padding: 4px 0 4px 16px; margin-bottom: 28px; }
+  h1 { margin: 0; font-size: 1.9rem; color: var(--teal); }
+  .sub { color: var(--muted); margin: 4px 0 0; }
+  h2 { font-size: 1.25rem; color: var(--teal); margin: 36px 0 10px;
+    padding-bottom: 6px; border-bottom: 2px solid var(--yellow); }
+  h3 { font-size: 1.05rem; margin: 20px 0 6px; }
+  a { color: var(--teal); }
+  code { background: var(--code); padding: 1px 5px; border-radius: 4px; font-size: .9em; }
+  pre { background: var(--code); border: 1px solid var(--line); border-radius: 8px;
+    padding: 14px 16px; overflow-x: auto; font-size: .85rem; line-height: 1.5; }
+  pre code { background: none; padding: 0; }
+  .eq { background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--teal);
+    border-radius: 6px; padding: 10px 16px; margin: 12px 0; font-size: 1.05rem; overflow-x: auto; }
+  .new { display: inline-block; background: var(--yellow); color: #1d2b2a; font-size: .72rem;
+    font-weight: 700; padding: 1px 8px; border-radius: 999px; vertical-align: middle; margin-left: 6px; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+  .card { background: var(--surface); border: 1px solid var(--line); border-top: 4px solid var(--teal);
+    border-radius: 8px; padding: 12px 14px; }
+  .card.accent { border-top-color: var(--yellow); }
+  .card h3 { margin-top: 0; }
+  .card p { margin: 0; }
+  .callout { background: var(--yellow-soft); border-left: 4px solid var(--yellow);
+    padding: 10px 14px; border-radius: 6px; margin: 12px 0; }
+  table { width: 100%; border-collapse: collapse; font-size: .95rem; }
+  th, td { text-align: left; vertical-align: top; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+  th { background: var(--teal-soft); }
+  .scroll { overflow-x: auto; }
+  ol.flow li, ul li { margin: 4px 0; }
+  .figwrap { background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
+    padding: 18px; margin: 14px 0; }
+  .figwrap svg { width: 100%; height: auto; display: block; }
+  figcaption { color: var(--muted); font-size: .85rem; margin-top: 10px; }
+  .diag-label { fill: var(--muted); font: 600 13px "Segoe UI", Roboto, sans-serif; }
+  .diag-ink { fill: var(--ink); font-family: "Segoe UI", Roboto, sans-serif; }
+  footer { margin-top: 40px; color: var(--muted); font-size: .85rem; }
+</style>
+</head>
+<body>
+<main>
+
+<header>
+  <h1>Costing an AI-powered SQL filter</h1>
+  <p class="sub">The roofline model for AI-SQL latency · 200 level · October 2026</p>
+</header>
+
+<h2>What it is</h2>
+<p>An AI-SQL query runs an LLM on every row. One <code>WHERE</code> clause asks the model
+true or false about each record. Before running the query, an engine wants to know how long it
+will take on a given model and GPU. Profiling answers that, but you redo it for every new model,
+GPU, and workload. The roofline model answers with arithmetic instead: count the work a query
+demands, divide by what the hardware can deliver, and you get a <b>speed-of-light latency</b>,
+the fastest the query could run.</p>
+
+<p>The method comes from a Full Stack Data Lab (Carnegie Mellon) post by Arnav Dhariya and
+Shreya Shankar, built for Quail, their AI-SQL execution engine. Quail uses the estimate to pick
+between query plans.</p>
+
+<div class="cards">
+  <div class="card"><h3>Roofline model</h3><p>Latency is the larger of two times: the arithmetic
+    divided by the GPU's compute rate, and the bytes moved divided by its memory bandwidth.</p></div>
+  <div class="card"><h3>Speed-of-light latency</h3><p>A lower bound from hardware limits. Count
+    FLOPs and bytes, divide by the ceilings, with no profiling run.</p></div>
+  <div class="card accent"><h3>Filter ordering</h3><p>When a query chains several AI filters, the
+    order changes the cost. The one that is cheap to run and rejects the most rows goes first.</p></div>
+</div>
+
+<div class="callout">
+  <b>Scope:</b> the worked numbers below are for one setup: Qwen3-4B in FP8 on a single NVIDIA
+  H100, filtering 5,000 IMDB reviews. Speed-of-light is a lower bound; the authors note real
+  runtime "may be much longer" because a GPU runs below its peak rates.
+</div>
+
+<h2>The core idea: compute time or memory time, whichever is longer</h2>
+<p>Every GPU kernel does two things: it computes, and it moves data between HBM (the GPU's main
+memory) and the chip. A modern GPU overlaps the two, so the slower of them sets the kernel's time,
+not their sum.</p>
+
+<div class="eq">T = max( FLOPs / &Pi;, &nbsp; Bytes moved / &beta; )</div>
+
+<p>&Pi; (pi) is the GPU's peak compute rate in FLOP/s. &beta; (beta) is its memory bandwidth in
+bytes/s. Divide the work a kernel needs by each ceiling and take the larger quotient. The ratio
+of work to data, <b>operational intensity</b> I = FLOPs / Bytes, decides which ceiling binds. The
+crossover sits at the <b>ridge point</b> I* = &Pi; / &beta;. Above the ridge point the kernel is
+compute-bound. A kernel below it is memory-bound, starved for data.</p>
+
+<div class="figwrap">
+<svg viewBox="0 0 820 392" role="img" aria-label="One forward pass splits into a compute path (FLOPs divided by peak compute) and a memory path (bytes divided by bandwidth); latency is the maximum of the two.">
+  <defs>
+    <marker id="arw" markerWidth="10" markerHeight="10" refX="7" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6 z" fill="#7c8c8a"/>
+    </marker>
+  </defs>
+
+  <!-- top surface box -->
+  <rect x="230" y="16" width="360" height="58" rx="10" fill="var(--teal-soft)" stroke="var(--teal)" stroke-width="1.5"/>
+  <text x="410" y="42" text-anchor="middle" class="diag-ink" font-size="16" font-weight="600">One forward pass over a batch of rows</text>
+  <text x="410" y="62" text-anchor="middle" class="diag-label">how much work? how many bytes?</text>
+
+  <!-- diverging arrows -->
+  <line x1="400" y1="74" x2="248" y2="146" stroke="#7c8c8a" stroke-width="2" marker-end="url(#arw)"/>
+  <line x1="420" y1="74" x2="572" y2="146" stroke="#7c8c8a" stroke-width="2" marker-end="url(#arw)"/>
+  <text x="188" y="112" class="diag-label">arithmetic</text>
+  <text x="548" y="112" class="diag-label">data moved</text>
+
+  <!-- compute path box -->
+  <rect x="110" y="150" width="250" height="94" rx="12" fill="#0f766e"/>
+  <text x="235" y="186" text-anchor="middle" fill="#fbf8ee" font-size="18" font-weight="700" font-family="Segoe UI, Roboto, sans-serif">Compute path</text>
+  <text x="235" y="214" text-anchor="middle" fill="#cde7e3" font-size="15" font-family="Segoe UI, Roboto, sans-serif">FLOPs &divide; &Pi;</text>
+
+  <!-- memory path box -->
+  <rect x="460" y="150" width="250" height="94" rx="12" fill="#0f766e"/>
+  <text x="585" y="186" text-anchor="middle" fill="#fbf8ee" font-size="18" font-weight="700" font-family="Segoe UI, Roboto, sans-serif">Memory path</text>
+  <text x="585" y="214" text-anchor="middle" fill="#cde7e3" font-size="15" font-family="Segoe UI, Roboto, sans-serif">bytes &divide; &beta;</text>
+
+  <!-- converging arrows -->
+  <line x1="248" y1="244" x2="372" y2="296" stroke="#7c8c8a" stroke-width="2" marker-end="url(#arw)"/>
+  <line x1="572" y1="244" x2="448" y2="296" stroke="#7c8c8a" stroke-width="2" marker-end="url(#arw)"/>
+
+  <!-- result box -->
+  <rect x="280" y="300" width="260" height="74" rx="12" fill="#f5c518"/>
+  <text x="410" y="334" text-anchor="middle" fill="#10302e" font-size="17" font-weight="700" font-family="Segoe UI, Roboto, sans-serif">latency = max(the two)</text>
+  <text x="410" y="357" text-anchor="middle" fill="#10302e" font-size="13" font-family="Segoe UI, Roboto, sans-serif">the slower path wins</text>
+</svg>
+<figcaption>The two paths run at once, and whichever takes longer sets the latency. The ridge
+point I* = &Pi; / &beta; is where the two times are equal, about 591 FLOP per byte in FP8 on the
+H100.</figcaption>
+</div>
+
+<h2>How it works, step by step</h2>
+<ol class="flow">
+  <li><b>Split the forward pass into three parts</b> — the linear projections (query, key, value,
+    output), the attention, and the MLP block. Each has its own FLOP count and byte count.</li>
+  <li><b>Count the work.</b> A dense matmul over the model's weights costs about 2 FLOPs per
+    parameter per token. The bytes are the weights and activations each part reads from HBM.</li>
+  <li><b>Divide by the ceilings and take the max</b> per part. Projections and MLP run in FP8;
+    attention runs in BF16 under FlashAttention, so each part uses its own &Pi;.</li>
+  <li><b>Sum the three parts</b> to get one filter's latency over the whole batch of rows.</li>
+  <li><b>For a chain of filters, reuse the KV cache.</b> The first filter encodes each document
+    once; later filters read those cached key/value vectors and pay only for their own question.</li>
+  <li><b>Order the filters</b> so a cheap one that rejects most rows runs first and shrinks the set
+    the later filters must ask about.</li>
+  <li><b>Add the per-filter times</b> for the query's speed-of-light estimate.</li>
+</ol>
+
+<h2>What binds: compute or memory</h2>
+<p>Each part of the forward pass sits on a different side of the ridge point, and the side moves
+with how many tokens you push through at once.</p>
+
+<div class="scroll">
+<table>
+  <tr><th>Part</th><th>Precision</th><th>Binds on</th><th>Crossover</th></tr>
+  <tr><td><b>Projections, MLP</b></td><td>FP8</td><td>Compute, in this workload</td>
+    <td>Compute-bound above ~296 tokens per forward pass</td></tr>
+  <tr><td><b>Attention</b></td><td>BF16 (FlashAttention)</td><td>Compute here, memory for later filters</td>
+    <td>Dominates only past ~12,300 tokens per request</td></tr>
+</table>
+</div>
+
+<p>Batch enough rows together and the projections and MLP become compute-bound, with the matmuls
+keeping the Tensor Cores busy. Attention stays small until requests get long, because a short
+review moves little data for the arithmetic it triggers.</p>
+
+<h2>A worked filter: 5,000 reviews in 6.64 seconds</h2>
+<p>The setup: Qwen3-4B in FP8 (3.6&times;10<sup>9</sup> non-embedding parameters, 36 layers,
+grouped-query attention with 8 KV heads), one H100, and 5,000 IMDB reviews averaging 298.8
+tokens each. The filter F<sub>1</sub> asks whether a review mentions a positive aspect. Every
+request is a preamble, the review, and the question; the model answers with a single token.</p>
+
+<pre><code>DOCUMENT:
+&lt;the review text&gt;
+Evaluate TRUE or FALSE for the following question: &lt;filter predicate&gt;
+
+&rarr; output: one token, true or false</code></pre>
+
+<p>The hardware ceilings that go into the roofline:</p>
+
+<div class="scroll">
+<table>
+  <tr><th>H100 SXM spec</th><th>Value</th></tr>
+  <tr><td>Peak compute, BF16 (&Pi;)</td><td>989.5 &times; 10<sup>12</sup> FLOP/s</td></tr>
+  <tr><td>Peak compute, FP8 (&Pi;)</td><td>1.979 &times; 10<sup>15</sup> FLOP/s</td></tr>
+  <tr><td>HBM bandwidth (&beta;)</td><td>3.35 &times; 10<sup>12</sup> bytes/s</td></tr>
+  <tr><td>HBM capacity</td><td>80 GB</td></tr>
+  <tr><td>Ridge point, FP8</td><td>&asymp; 590.75 FLOP/byte</td></tr>
+  <tr><td>Ridge point, BF16</td><td>&asymp; 295.37 FLOP/byte</td></tr>
+</table>
+</div>
+
+<p>Running F<sub>1</sub> over all 5,000 reviews takes 16 forward passes. The roofline gives each
+part a compute time and a memory time, and you pay the larger.</p>
+
+<div class="scroll">
+<table>
+  <tr><th>Component</th><th>Compute time</th><th>Memory time</th><th>Binds on</th></tr>
+  <tr><td>Projections</td><td>1.6778 s</td><td>0.0045 s</td><td>compute</td></tr>
+  <tr><td>Attention</td><td>0.1850 s</td><td>0.0774 s</td><td>compute</td></tr>
+  <tr><td>MLP</td><td>4.7818 s</td><td>0.0128 s</td><td>compute</td></tr>
+  <tr><td><b>Total (max per part, summed)</b></td><td><b>6.64 s</b></td><td>0.09 s</td><td>compute</td></tr>
+</table>
+</div>
+
+<p>Every part is compute-bound, so memory time never shows up in the bill. The MLP block is the
+single biggest cost. Total: 6.64 seconds to run an LLM over 5,000 reviews.</p>
+
+<h2>Chaining filters, and why the order matters</h2>
+<p>Real queries chain several filters with <code>AND</code>. The trick is the KV cache. The first
+filter processes each review once. Call that the <b>scan</b>, about 1.3 ms per document. That
+work produces key/value vectors for the preamble and the document, and those stay cached. Every
+later filter reuses them and pays only the <b>ask</b>: its own question tokens plus the one output
+token, about 0.2 ms. The scan dwarfs the ask, so the second and third filters are nearly free next
+to the first.</p>
+
+<p>Because each filter passes only some rows to the next, the order sets how many documents reach
+each ask. The authors rank filters the way Hellerstein and Stonebraker ranked expensive database
+predicates: by cost over rejection power.</p>
+
+<div class="eq">rank<sub>i</sub> = ask<sub>i</sub> / ( 1 &minus; s<sub>i</sub> )</div>
+
+<p>Here s<sub>i</sub> is selectivity, the fraction of rows that pass. A low rank means the filter
+is cheap to ask and throws out a lot, so it goes first. Sort ascending by rank; the sort costs
+O(m log m) for m filters.</p>
+
+<div class="scroll">
+<table>
+  <tr><th>Filter</th><th>Predicate</th><th>q (tokens)</th><th>selectivity s</th><th>ask (ms)</th><th>rank</th></tr>
+  <tr><td>F<sub>2</sub></td><td>discusses the ending</td><td>45</td><td>0.2273</td><td>0.180</td><td>0.234</td></tr>
+  <tr><td>F<sub>1</sub></td><td>mentions a positive aspect</td><td>51</td><td>0.4856</td><td>0.203</td><td>0.394</td></tr>
+  <tr><td>F<sub>3</sub></td><td>mentions a named actor</td><td>49</td><td>0.6123</td><td>0.195</td><td>0.504</td></tr>
+</table>
+</div>
+
+<p>F<sub>2</sub> rejects 77% of reviews and is the cheapest to ask, so it leads. The engine runs
+F<sub>2</sub> &rarr; F<sub>1</sub> &rarr; F<sub>3</sub>, not the written order. The payoff is modest
+because most of the cost is encoding each document once, which you pay no matter the order:</p>
+
+<div class="scroll">
+<table>
+  <tr><th>Order</th><th>Speed-of-light time</th></tr>
+  <tr><td>F<sub>2</sub> &rarr; F<sub>1</sub> &rarr; F<sub>3</sub> (chosen)</td><td>6.8665 s</td></tr>
+  <tr><td>F<sub>1</sub> &rarr; F<sub>2</sub> &rarr; F<sub>3</sub> (as written)</td><td>7.1906 s</td></tr>
+  <tr><td>F<sub>3</sub> &rarr; F<sub>2</sub> &rarr; F<sub>1</sub></td><td>7.2994 s</td></tr>
+</table>
+</div>
+
+<p>Leading with F<sub>1</sub> instead of F<sub>2</sub> costs about 4.7% more. The whole
+three-filter query lands at 6.87 s, just above the 6.64 s for F<sub>1</sub> alone, because KV
+reuse makes the two extra filters almost free.</p>
+
+<h2>Fitting the batch in memory</h2>
+<p>The KV cache has to fit in HBM. The authors budget it from the 80 GB on the card: about 76 GB
+usable, minus 4.5 GB for the FP8 weights and 18.08 GB for temporary buffers, leaves 53.42 GB for
+the cache. One document's prefix KV runs about 44.4 MB, so roughly 1,200 documents fit at once and
+the 5,000 reviews run in five batches. The query-wide estimate works out to 1.34&times;10<sup>16</sup>
+FLOPs and about 6.86 seconds.</p>
+
+<h2>Limits and what to check</h2>
+<div class="cards">
+  <div class="card accent"><h3>It's a lower bound</h3><p>Speed-of-light assumes peak compute and
+    bandwidth. Real GPUs fall short, so measured latency runs higher. Treat the number as a floor.</p>
+  <div class="card"><h3>Mean length lies</h3><p>Attention arithmetic grows with the square of
+    length. Using the mean review length underestimates it when lengths vary.</p></div>
+  <div class="card"><h3>Rough memory model</h3><p>The buffer estimate is approximate; engines like
+    vLLM profile activation memory with dummy inputs instead of a formula.</p></div>
+  <div class="card"><h3>Independent selectivities</h3><p>The ordering assumes each filter's pass
+    rate is independent of the others. Correlated outcomes hurt the estimate.</p></div>
+  <div class="card"><h3>No cross-filter overlap</h3><p>The model charges each filter separately and
+    doesn't let their compute and memory overlap across filters, so it overcounts a little.</p>
+  <div class="card"><h3>Ordering rule has a limit</h3><p>The rank rule is provably best only when
+    every part is compute-bound. Mixed bottlenecks may need a different rule, which the authors leave open.</p>
+</div>
+
+<h2>Further reading</h2>
+<ul>
+  <li><a href="https://fsdatalab.github.io/blog/ai-filter-cost-estimates/">How to Cost Your AI-Powered Filters</a>
+    — the source post by Arnav Dhariya and Shreya Shankar, Full Stack Data Lab (CMU), Oct 1 2026.
+    It carries an interactive playground for the filter-ordering effect (Qwen3-4B FP8 on H100).</li>
+  <li>Williams, Waterman, Patterson, <i>Roofline: An Insightful Visual Performance Model for
+    Multicore Architectures</i> (2009) — the original roofline model.</li>
+  <li>Hellerstein and Stonebraker, <i>Predicate Migration</i> — the expensive-predicate ordering
+    rule the filter sort is built on.</li>
+</ul>
+
+<footer>Explainer prepared by Amit Arora, Principal Solutions Architect – AI/ML, AWS.
+Source material by Arnav Dhariya and Shreya Shankar, Full Stack Data Lab, Carnegie Mellon
+University. Numbers reproduced from the post; not independently re-derived.</footer>
+</main>
+</body>
+</html>
