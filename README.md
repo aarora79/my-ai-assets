@@ -40,7 +40,7 @@ Only `template.txt` is tracked. Personal portfolio inputs and results stay local
 ### writing
 **Location:** `skills/writing/`
 
-Rewrites prose so people will actually read it. Applies Orwell's six rules and strips the common LLM tells: passive voice, dead metaphors, -ly padding, and machine-made sentence shapes. Use it for essays, emails, reports, blog posts, and other general prose.
+Rewrites prose so people will actually read it. Applies Orwell's six rules and strips the common LLM tells: passive voice, dead metaphors, -ly padding, and machine-made sentence shapes. Use it for every piece of prose you write: GitHub issues, pull request descriptions and comments, review feedback, READMEs, design docs, release notes, emails and essays. `prose-scan.py`, in the same folder, scans a file for the phrase-level tells and prints `path:line` for each hit; it needs Python 3 and nothing else.
 
 ### poster-making
 **Location:** `skills/poster-making/`
