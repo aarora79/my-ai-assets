@@ -1,10 +1,10 @@
 ---
 name: writing
-description: Write prose people will actually read. Use for any prose you produce - essays, articles, emails, letters, reports, blog posts, newsletters, social posts, cover letters, talks, and summaries. Applies Orwell's six rules and strips the LLM tells - passive voice, dead metaphors, and -ly padding.
+description: Write prose people will actually read. Use for any prose you produce - docs, READMEs, issues, pull requests, reviews, release notes, emails, essays, reports and posts. Applies Orwell's six rules and strips the LLM tells - passive voice, dead metaphors, and -ly padding.
 license: Apache-2.0
 metadata:
   author: aarora79
-  version: "1.1"
+  version: "1.2"
 ---
 
 # Writing Skill
@@ -12,6 +12,10 @@ metadata:
 If you want people to read your stuff, follow Orwell's rules.
 
 LLMs are not your friends. They write in passive voice, mix figures of speech that do not fit together, and pad every sentence with -ly words. Cut all of it.
+
+## Where it applies
+
+Apply this skill to every piece of prose you write: GitHub issues, pull request descriptions, PR and review comments, feedback on someone's work, commit messages, code comments, READMEs, ARCHITECTURE.md and other design docs, release notes, chat answers and emails. A one-line comment counts, and so does a table cell. If a person will read it, run the revision pass on it, and run `prose-scan.py` on it when it lives in a file.
 
 ## Orwell's rules
 
@@ -78,7 +82,8 @@ Read the sentence aloud. If no one would say it, rewrite it. Break any rule abov
 ## Extra rules for LLM prose
 
 - Cut -ly adverbs. Pick a stronger verb instead. `significantly increased` -> `doubled`. `carefully considered` -> `weighed`.
-- No "not only X but also Y". No "X isn't just Y - it's Z". No em-dash reveal at the end of a sentence.
+- No "not only X but also Y". No "X isn't just Y - it's Z". No "this isn't just about X", in any form.
+- No em-dashes at all, anywhere, and no double hyphen standing in for one. Use a comma, a colon, parentheses, or two sentences.
 - No lists of three when two facts will do.
 - No summary paragraph that repeats what you just said.
 - No praise of the reader, the topic, or yourself. No "great question", no "powerful and flexible".
@@ -112,14 +117,41 @@ Word-level fixes are not enough. LLMs lean on a handful of sentence shapes that 
 - No summary beats. Do not restate the point you just made in different words.
 - No stacked noun phrases. Break "a customer-focused value-creation engagement model" into words that do work.
 - No nominalization. Turn the noun back into its verb: "reach a decision" -> "decide", "conduct an investigation" -> "investigate", "provide support for" -> "support".
-- No significance flags. Do not tell the reader that something matters; give the reason and let them judge. Ban: matters more than it looks, worth noticing, the part worth knowing, this is the important bit, note that, importantly, and that is not a small thing.
+- No significance flags. Do not tell the reader that something matters; give the reason and let them judge. Ban: matters more than it looks, worth noticing, worth knowing, the part worth knowing, this is the important bit, note that, importantly, it is not obvious, and that is not a small thing.
   - Bad: State can be a string, an object or an array, and the choice matters more than it looks.
   - Good: State can be a string, an object or an array. Use an object, because named fields tell the reader which part is which.
-- No stage directions. Do not open a sentence by pointing at the next one: "Now look at", "Watch what happens", "Here is the thing", "Consider", "Notice that". Start with the fact.
+- No stage directions. Do not open a sentence by pointing at the next one: "Now look at", "Watch what happens", "Here is the thing", "Consider", "Notice that", "Let us walk through". Start with the fact.
   - Bad: Now look at what this does to the bill.
   - Good: The expensive model only sees the requests that need it, which is most of the saving.
-- No closing flourishes. "That is the whole interface", "and the rest is variations on it", "end of story" are applause lines. Stop when the information stops.
+- No closing flourishes. "That is the whole interface", "and the rest is variations on it", "end of story", "in conclusion", "ultimately" are applause lines. Stop when the information stops.
+- No teaser openers. Do not open a section by announcing how many things are coming, and do not assert a dramatic dependency between them. Start with the first thing and let the count emerge.
+  - Bad: Two things changed, and the second exists because the first failed.
+  - Good: The trip moved to May. The hotel had no rooms in April, so we changed the dates.
+  - Announcing a count is fine when it does real work, as in "Four rules keep the budget honest" followed by four named rules. It is not fine as a drum roll.
+- No appended reassurance clause. Do not count the items and then add a clause saying they are all fine. The clause carries no information.
+  - Bad: Three things make the plan work, and all three are in place.
+  - Good: Three things make the plan work.
+- No decorative bolding. Bold a word only to mark a real term or a genuine warning. Bolding the first clause of every paragraph is a layout tic, and once every paragraph is bold nothing is.
+- No connective padding. Cut "that said", "with that in mind", "having said that", "it is also worth adding". If the next sentence follows, it does not need a ramp.
+- No headline fragments. Write sentences with a subject and a verb, not telegraph headings. A bulleted answer stops sounding human when every bullet becomes a topic label plus a clipped noun phrase, and the reader has to work out who does what.
+  - Bad: Budget: approved, two caveats.
+  - Good: The board approved the budget, with two caveats.
+  - A leading label is fine when it is a real heading. It is not fine as a stand-in for the sentence's subject.
 - Vary sentence length on purpose, not on a pattern. Mix short and long so the rhythm is unpredictable. Do not alternate long-short-long-short.
+
+## Replying to a person
+
+Everything above applies to a reply. These are the few things a reply needs that a document does not. Use them for email, chat answers, issue and PR comments, and review feedback.
+
+- Answer in the order they asked. Echo their own words in the heading of each answer so they can match your reply to their question.
+- Write full sentences, not headlines. A reply is one side of a conversation, so the headline-fragment tell above hits hardest here. Read it aloud as if you were saying it to them.
+- Name yourself as the actor. A recommendation belongs to someone: "I would keep the old system running for a month", not "a parallel run is recommended".
+- Answer the question before you qualify it. Lead with yes, no, or the recommendation, then the detail.
+- State the limits you know about. A reply that only lists what works reads like a sales sheet and costs you the next conversation.
+- Close with who does what next. Name the one thing you want back from them.
+- Contractions are fine. So is a short sentence that sounds like speech. Clarity is the goal, and formality doesn't serve it.
+
+Do not pad a reply to sound warm. No "great question", no restating their question back at them before answering, no summary paragraph at the end.
 
 ## Revision pass
 
@@ -130,10 +162,30 @@ Run this on every draft before you ship it:
 3. Search for `ly ` and delete or replace each hit.
 4. Delete every phrase from the ban lists above.
 5. Cut the first sentence of each paragraph if the second one already says it.
-6. Scan for the sentence-shape tells above: antithesis, corrective negation, contrasting pairs, setup/payoff, parallel structure, stacked nouns, significance flags, stage directions, closing flourishes. Rewrite each into a plain statement.
-7. Count words. Cut a third.
-8. Check every claim against something real - a source, a number, a date.
-9. Apply rule 6 last: read once more and undo anything that now sounds wrong.
+6. Run the mechanical scan below and fix every hit.
+7. Scan by eye for the shape tells the scan cannot catch: parallel structure, paragraph pinning, summary beats, setup/payoff, parataxis, decorative bolding.
+8. Check every bullet has a subject and a verb. A bullet that opens with a topic label and a colon usually does not.
+9. Count words. Cut a third.
+10. Check every claim against something real - a source, a number, a date, a file.
+11. Apply rule 6 last: read once more and undo anything that now sounds wrong.
+
+Run the pass. Loading this skill and then skipping the pass is how the tells survive into the draft.
+
+## Mechanical scan
+
+A prose rule you have to remember is a rule you will skip under deadline. `prose-scan.py`, in this skill's folder, checks a file for the phrase-level tells. Run it before you hand anything over, the way you would run a linter. It needs Python 3 and nothing else:
+
+```bash
+python3 <this skill's folder>/prose-scan.py <file> [<file> ...]
+# for example, with the skill installed in a repo:
+python3 .claude/skills/writing/prose-scan.py README.md docs/design.md
+```
+
+It prints `path:line` for each hit. Add `--strict` to exit non-zero on any hit, which is what a generated document should be held to. For prose that lives outside a file, such as an issue, a PR comment or a chat answer, write the draft to a scratch file and scan that. The shape-level tells still need your eyes: parallel structure, paragraph pinning, summary beats, setup/payoff, parataxis, decorative bolding.
+
+Treat each hit as a candidate to read. `robust` is fine inside a quotation, and `ultimately,` sometimes carries meaning. Decide on each one; leave none unexamined.
+
+When you add a new tell to this file, add its pattern to `TELLS` in the script, so the next draft gets caught instead of reviewed.
 
 ## Example
 
