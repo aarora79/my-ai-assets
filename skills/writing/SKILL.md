@@ -1,6 +1,6 @@
 ---
 name: writing
-description: Write prose people will actually read. Use for every piece of prose you produce - GitHub issues, pull request descriptions and comments, review feedback, commit messages, code comments, READMEs, architecture and design docs, release notes, chat answers, emails, essays, reports and posts. Applies Orwell's six rules, strips the LLM tells - passive voice, dead metaphors, -ly padding and machine-made sentence shapes - and ships a scanner, prose-scan.py, that catches the phrase-level ones.
+description: Write prose people will actually read. Use for any prose you produce - docs, READMEs, issues, pull requests, reviews, release notes, emails, essays, reports and posts. Applies Orwell's six rules and strips the LLM tells - passive voice, dead metaphors, and -ly padding.
 license: Apache-2.0
 metadata:
   author: aarora79
