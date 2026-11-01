@@ -4,7 +4,7 @@ description: Build a self-contained HTML explainer for a technical topic - what 
 license: MIT-0
 metadata:
   author: aarora79
-  version: "1.6"
+  version: "1.7"
 ---
 
 # Explainer
@@ -127,7 +127,7 @@ Measured typography, in the teal and yellow palette that every explainer on [aar
 ```css
 :root {
   --measure: 64ch;              /* ~72 characters a line, inside the 50-75 band */
-  --wide: 960px;                /* figures, tables and code break out to here */
+  --wide: 960px;                /* figures, tables and long code break out to here */
   --sans: Inter, Roboto, -apple-system, "Segoe UI", system-ui, sans-serif;
   --mono: "JetBrains Mono", "Roboto Mono", ui-monospace, Menlo, Consolas, monospace;
 
@@ -170,8 +170,18 @@ Hold the prose to the measure and let the wide things break out of it:
 ```css
 .wrap { display: grid; grid-template-columns: 1fr min(var(--measure), 100%) 1fr; }
 .wrap > * { grid-column: 2; }
-.wrap > figure, .wrap > table, .wrap > pre { grid-column: 1 / -1;
+.wrap > figure, .wrap > table, .wrap > pre.wide { grid-column: 1 / -1;
   width: min(100%, var(--wide)); justify-self: center; }
+```
+
+A code block stays in the prose column unless its longest line will not fit there. At 14.5px mono inside the 64ch measure, the column holds about 76 characters, so give `class="wide"` to any `<pre>` with a line longer than 74 and leave the rest alone. A two-line snippet stretched to 960px looks like it has spilled out of the page, and it gains nothing from the room. Mark the blocks from their line lengths:
+
+```python
+import html, re
+def _mark_wide(m: re.Match) -> str:
+    longest = max(len(line) for line in html.unescape(m.group(2)).split("\n"))
+    return ('<pre class="wide">' if longest > 74 else "<pre>") + m.group(1) + m.group(2) + "</code></pre>"
+page = re.sub(r'<pre(?: class="wide")?>(<code[^>]*>)(.*?)</code></pre>', _mark_wide, page, flags=re.S)
 ```
 
 Eight rules for the file itself:
@@ -234,7 +244,7 @@ Run all of it. Every check has caught something real.
 3. **Measure.** Render the page and count characters a line. Outside 50-75, change `--measure`.
 4. **Contrast.** Every text-on-background pair at 4.5:1 or better, in both themes.
 5. **Code.** Parse every code block. A snippet that does not compile teaches the wrong thing.
-6. **Render.** Screenshot light, dark and 390px wide, and look at them. Check that nothing overflows its container.
+6. **Render.** Screenshot light, dark and 390px wide, and look at them. Check that nothing overflows its container. At desktop width, no code block should scroll sideways and no short block should sit at the wide width: in the browser, every `pre` without `wide` has `scrollWidth <= clientWidth`.
 7. **Links.** Every URL in the source list resolves.
 8. **Numbers.** Every figure on the page traces to a source in the list, with a date.
 9. **Register.** Take three sections and mark every sentence A or E, as above. A section with no E sentences is a summary. Rewrite it before you ship.
