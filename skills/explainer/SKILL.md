@@ -1,17 +1,17 @@
 ---
 name: explainer
-description: Build a self-contained HTML explainer for a technical topic - what it is, how it works, what it cannot do, and what to build with it. Teaches in dependency order, defines every term before using it, and ships one page with inline SVG diagrams, runnable code and dated sources. Use for explainers, primers, briefings, onboarding pages, course handouts and teaching material.
+description: Build a self-contained HTML explainer for a technical topic - what it is, how it works, what it cannot do, and what to build with it. Teaches in dependency order, defines every term before using it, and ships one page with inline SVG diagrams, runnable code, a glossary, dated sources and a square infographic. Use for explainers, primers, briefings, onboarding pages, course handouts and teaching material.
 license: MIT-0
 metadata:
   author: aarora79
-  version: "1.8"
+  version: "1.9"
 ---
 
 # Explainer
 
 Write the page a smart colleague needs to understand a thing they have never met, and to start building with it the same afternoon.
 
-The output is a folder: an HTML page, its markdown twin, and a printable poster. The page is what people read, and it needs no build step and no server. The markdown is what survives a repo, a diff, a pull request comment and a terminal. A reader opens either one, scrolls once, and knows what the thing is, how it works, where it breaks, and what to try first.
+The output is a folder: an HTML page, its markdown twin, and an infographic as HTML and PNG, plus a printable poster when somebody will present the page. The page is what people read, and it needs no build step and no server. The markdown is what survives a repo, a diff, a pull request comment and a terminal. The infographic is what gets shared: one square picture of the whole argument. A reader opens either one, scrolls once, and knows what the thing is, how it works, where it breaks, and what to try first.
 
 ## Two skills, not one
 
@@ -96,6 +96,7 @@ Not every explainer needs every section. It needs them in this order.
 |---|---|
 | Title and standfirst | Name the thing and the payoff in two sentences. The standfirst says what the page covers. |
 | Number strip | Three or four figures that set the scale, each with its source and date under it. |
+| Infographic | The whole argument as one square picture, with a link to its PNG. See Step 5. |
 | What it is | Plain words, then the vendor's own line if they have a good one. |
 | How it works | At most three design choices, each a bolded lead and a short paragraph. This is where the first diagram goes. |
 | The primitives or the API | The reference material, after the reader has seen one worked call. |
@@ -104,7 +105,14 @@ Not every explainer needs every section. It needs them in this order.
 | Prior art | Repos and projects worth reading, with one line each on why. |
 | Build ideas | The section the reader came for. Ground each in something they already own. |
 | Twenty minutes to first answer | Install, key, one script, one check they can run. |
+| Glossary | Every term in the term ledger, in alphabetical order, one or two sentences each. |
 | Sources | Every URL, plus anything you sampled from a local file, with the date. |
+
+**The glossary comes just before the sources.** It holds every term from the term ledger, so a
+reader who jumps into the middle of the page, or comes back a week later, can look a word up
+without hunting for the sentence that defined it. Copy each definition from the first-use
+sentence and keep the two consistent; a glossary that disagrees with the page teaches two
+meanings. Make it a two-column table (Term, Meaning) and add it to the table of contents.
 
 **Sources go last, every time.** Link inline where a claim needs its source, and keep the
 full list at the end so the page closes on its evidence. A reader who wants to check you
@@ -115,6 +123,8 @@ should find everything in one place without scrolling back through the argument.
 A picture earns its place when it shows a mechanism, a flow, or a before and after. It earns nothing when it decorates.
 
 - Draw inline SVG with a `viewBox` and `width: 100%`. No image files, no chart library.
+- Draw at the column's width: a `viewBox` 700 units wide. The text column is about 704px, so every label renders at the size you gave it. A 900-wide drawing squeezed into the column shrinks 13px labels to 10px, and stretching it wider than the column breaks the layout.
+- Keep every label inside its box, with room to spare. Step 6 measures this, because a label that runs over a box edge is easy to miss by eye.
 - Paint with the page's CSS variables (`fill: var(--ink)`, `stroke: var(--accent)`), so one diagram works in light and dark.
 - Label every box. A shape with no words is a shape.
 - The caption says what to notice, not what the picture contains.
@@ -127,7 +137,6 @@ Measured typography, in the teal and yellow palette that every explainer on [aar
 ```css
 :root {
   --measure: 64ch;              /* ~72 characters a line, inside the 50-75 band */
-  --wide: 960px;                /* figures, tables and long code break out to here */
   --sans: Inter, Roboto, -apple-system, "Segoe UI", system-ui, sans-serif;
   --mono: "JetBrains Mono", "Roboto Mono", ui-monospace, Menlo, Consolas, monospace;
 
@@ -165,18 +174,20 @@ Wrap the H1, standfirst and byline in a `<header>` so the yellow bar runs down a
 | Table | 16px, `font-variant-numeric: tabular-nums` |
 | Caption, byline | 14.5px |
 
-Hold the prose to the measure and let the wide things break out of it:
+Everything sits in one column, the width of the prose. Nothing breaks out of it: not code, not figures, not tables, not the number strip. Anything wider than the text around it looks like it has spilled out of the page.
 
 ```css
 .wrap { display: grid; grid-template-columns: 1fr min(var(--measure), 100%) 1fr; }
 .wrap > * { grid-column: 2; }
-.wrap > figure, .wrap > table, .wrap > pre.wide { grid-column: 1 / -1;
-  width: min(100%, var(--wide)); justify-self: center; }
+.strip { display: grid; gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
 ```
 
-Code stays in the prose column, so write it to fit. At 14.5px mono inside the 64ch measure the column holds about 76 characters, so keep every code line at 72 or fewer: put one argument per line, give a long expression its own variable, and split a shell command with a trailing `\`. A block that breaks out to 960px sits wider than the text around it and looks like it has spilled out of the page, even when only one of its lines needed the room. When a script on the page also ships as a file the reader runs, rewrap both copies so they stay identical.
+Four number tiles fit the column at 150px each. A table with more columns than the column holds scrolls inside its own `.tablebox` wrapper (`overflow-x: auto`).
 
-Give `class="wide"` only to a block whose long line cannot wrap, such as a URL or a hash. Find the lines that need rewrapping before you ship:
+Code stays in the column too, so write it to fit. At 14.5px mono inside the 64ch measure the column holds about 76 characters, so keep every code line at 72 or fewer: put one argument per line, give a long expression its own variable, and split a shell command with a trailing `\`. When a script on the page also ships as a file the reader runs, rewrap both copies so they stay identical.
+
+A line that cannot wrap, such as a URL or a hash, scrolls inside its own block rather than widening it. Find the lines that need rewrapping before you ship:
 
 ```python
 import html
@@ -223,6 +234,18 @@ link to a section in one lands in the same place in the other.
 - **Read the markdown once before shipping.** Check that the fences balance, that no raw HTML
   leaked through, and that every code block still parses.
 
+### The infographic
+
+Every explainer ships an infographic: the whole argument as one square picture that somebody can post, drop into a slide or pin in a channel without opening the page. It is the page at a glance rather than a summary, so it carries the same structure and the same numbers.
+
+- **Two files beside the page**: `<topic>-infographic.html`, which holds the SVG and the light palette and nothing else, and `<topic>-infographic.png`, rendered from it at 2400 x 2400.
+- **Draw it as one SVG with `viewBox="0 0 1200 1200"`**, painted with the page's CSS variables so the same SVG embeds in the page and follows the reader's theme. Use the font stack `"Segoe UI", Roboto, Helvetica, Arial, sans-serif`, because it renders the same in a headless browser as on the site.
+- **The house layout**, as on the site's On AI explainer: a 12px yellow bar beside a 48px teal title and a 26px muted subtitle; numbered cards (a yellow circle with a dark numeral, a 28px teal title, 21px body lines) in a grid; one yellow-soft band for the takeaway; and a footer line, right-aligned, naming the author, the month and `aarora79.github.io/explainers`. Tint a group of cards with `--teal-soft` when the page divides its ideas into two kinds.
+- **Keep text at 20px or more**, except a small uppercase tag at 15px. The PNG gets viewed at phone width, and anything smaller blurs there.
+- **Numbers on the infographic match the page exactly.** It is the copy most people see, so a number that drifted between the two misinforms the most readers.
+- **Embed it near the top of the page**, after the number strip, as `<figure class="infographic">` with a caption linking the PNG. Drop the figure panel for this one (`figure.infographic { padding: 0; background: none; border: none; }`), because the infographic has its own background. In the markdown twin, show the PNG as an image instead of ASCII art.
+- **Render the PNG with playwright** at a 1200 x 1200 viewport and `device_scale_factor=2`, then confirm the file is 2400 x 2400.
+
 ### The poster
 
 An explainer earns a poster when somebody will present it, print it or pin it up. Once the HTML
@@ -251,7 +274,7 @@ Run all of it. Every check has caught something real.
 3. **Measure.** Render the page and count characters a line. Outside 50-75, change `--measure`.
 4. **Contrast.** Every text-on-background pair at 4.5:1 or better, in both themes.
 5. **Code.** Parse every code block. A snippet that does not compile teaches the wrong thing.
-6. **Render.** Screenshot light, dark and 390px wide, and look at them. Check that nothing overflows its container. At desktop width, no code block should scroll sideways and no short block should sit at the wide width: in the browser, every `pre` without `wide` has `scrollWidth <= clientWidth`.
+6. **Render.** Screenshot light, dark and 390px wide, and look at them. Then measure, at desktop width: every child of `main` sits inside the first paragraph's box; every `pre` has `scrollWidth <= clientWidth` and no line under its Copy button; every SVG label sits inside the box it starts in and inside its SVG; and every diagram renders at 0.9 of its `viewBox` or more, the infographic excepted. Run the label check on the standalone infographic too.
 7. **Links.** Every URL in the source list resolves.
 8. **Numbers.** Every figure on the page traces to a source in the list, with a date.
 9. **Register.** Take three sections and mark every sentence A or E, as above. A section with no E sentences is a summary. Rewrite it before you ship.
@@ -280,6 +303,26 @@ print(pg.evaluate("""() => {
   document.body.appendChild(c);
   return Math.round(p.getBoundingClientRect().width / (c.getBoundingClientRect().width / 26));
 }"""))
+```
+
+```python
+# every SVG label inside its box and its SVG, at real size
+print(pg.evaluate("""() => [...document.querySelectorAll('svg[viewBox]')]
+  .filter(s => !s.closest('.copy')).flatMap((svg, i) => {
+    const sb = svg.getBoundingClientRect(), k = sb.width / svg.viewBox.baseVal.width;
+    const boxes = [...svg.querySelectorAll('rect')].map(r => r.getBoundingClientRect())
+      .filter(r => r.width < sb.width - 2);
+    const bad = k < 0.9 && !svg.closest('.infographic') ? [`svg ${i} at ${k.toFixed(2)}x`] : [];
+    svg.querySelectorAll('text').forEach(t => {
+      const b = t.getBoundingClientRect();
+      const x = sb.left + t.getAttribute('x') * k, y = sb.top + t.getAttribute('y') * k;
+      const box = boxes.filter(r => x >= r.left && x <= r.right && y >= r.top && y <= r.bottom)
+        .sort((p, q) => p.width * p.height - q.width * q.height)[0];
+      if (b.left < sb.left || b.right > sb.right || (box && b.right > box.right - 2))
+        bad.push(`svg ${i}: ${t.textContent}`);
+    });
+    return bad;
+  })"""))
 ```
 
 ## Step 7 - read it once more, top to bottom
@@ -313,7 +356,9 @@ a caption that repeated the paragraph above it.
 explainers/<topic>/
   <topic>-explainer.html
   <topic>-explainer.md
-  poster/
+  <topic>-infographic.html
+  <topic>-infographic.png
+  poster/                       only when somebody will present it
     <topic>-poster.html
     <topic>-poster-front.png
     <topic>-poster-back.png
@@ -331,6 +376,8 @@ explainers/<topic>/
 ## Stay inside the lines
 
 - Do not open the HTML before the research is done.
+- Do not let anything break out of the text column.
+- Do not ship without the glossary and the infographic.
 - Do not use a term the page has not defined.
 - Do not state a number without a date and an owner.
 - Do not present a vendor's self-scored benchmark as measured fact.
