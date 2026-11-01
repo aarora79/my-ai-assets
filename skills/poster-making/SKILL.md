@@ -4,7 +4,7 @@ description: Build a printable A4 front/back poster - HTML, two 300 DPI PNGs and
 license: MIT-0
 metadata:
   author: aarora79
-  version: "1.0"
+  version: "1.1"
 ---
 
 # Poster making
@@ -54,7 +54,9 @@ Speaker notes in a deck are gold - they carry the argument in spoken register, w
 
 ## Step 2 - build harness
 
-Work in a scratch dir with four files: `chart.py` (SVG generator), `template.html` (placeholders `__FONTS__`, `__QR__`, `__CHART__`), `build.py` (inlines all three), `shot.py` (renders and measures).
+Work in a scratch dir with four files: `chart.py` (SVG generator), `template.html` (placeholders `__FONTS__`, `__QR__`, `__CHART__`, and `__CODE:<file>:<start>:<end>__` for code excerpts), `build.py` (inlines them all), `shot.py` (renders and measures).
+
+**Code excerpts come from the source files, never from your memory.** `build.py` reads the named file, takes the line range, runs `textwrap.dedent` so a slice from inside a function starts at the left margin, and HTML-escapes it. Re-check every range after editing a source file: a two-line import change once shifted an excerpt into the middle of a function. Quote program output verbatim too, and where a panel trims lines, say "output trimmed" in its caption.
 
 **Fonts.** Google Fonts is blocked by the proxy. Pull woff2 from npm instead and base64-inline them so the page renders identically everywhere:
 
@@ -90,7 +92,7 @@ Page geometry: `794 x 1123 px` (A4 at 96 DPI), `padding: 20px 28px 9px`, `gap: 8
 }
 ```
 
-Swap those five hues for any palette the user picks; keep the paper light and the ink near-black so it prints. Add a faint dot grid: `radial-gradient(var(--ink) .6px, transparent .6px)` at `16px`, `opacity:.045`.
+Swap those five hues for any palette the user picks; keep the paper light and the ink near-black so it prints. For a poster that accompanies an aarora79.github.io explainer, use the site palette: paper `#fffdf5`, card `#ffffff`, ink `#1d2b2a`, teal `#0f766e` with `#e0f2ef` for its wash, and yellow `#f5c518` with `#fff6cc` in place of coral and amber. Add a faint dot grid: `radial-gradient(var(--ink) .6px, transparent .6px)` at `16px`, `opacity:.045`.
 
 **Type.** Archivo 900 uppercase for headings (h1 39px/-1.6px tracking, h2 16.5px), Space Grotesk for body (10.6px, `.fine` 8.4px), JetBrains Mono for labels, commands and data (7-9px, wide tracking, uppercase for eyebrows).
 
@@ -132,8 +134,12 @@ Both pages must be exactly 1123px. Measure, never eyeball:
 r = await pg.evaluate("""(id)=>{const e=document.getElementById(id);
   return {sh:e.scrollHeight, ch:e.clientHeight,
           over:[...e.querySelectorAll('*')].filter(n=>n.scrollHeight>n.clientHeight+2)
-                 .map(n=>n.className+':'+n.scrollHeight+'/'+n.clientHeight).slice(0,8)};}""", pid)
+                 .map(n=>n.className+':'+n.scrollHeight+'/'+n.clientHeight).slice(0,8),
+          clippedPre:[...e.querySelectorAll('pre')].filter(n=>n.scrollWidth>n.clientWidth+1)
+                 .map(n=>n.textContent.slice(0,40))};}""", pid)
 ```
+
+Code blocks use `overflow: hidden`, so a line too long for its panel is cut off with no sign. `clippedPre` must come back empty; when it does not, rewrap the line in the source file rather than shrinking the font.
 
 `sh > ch` means clipped. Trim in this order - least damage first:
 
@@ -164,7 +170,8 @@ The page needs a print block: `@page{size:A4;margin:0}` and `.page{page-break-af
 Run all of these every time, and report the results:
 
 - Both PNGs are `2481 x 3509`.
-- **Both QRs decode out of the rendered PNGs** (crop the corner, `cv2.QRCodeDetector`) to the exact intended URL. A QR that was right in the source can still render too small to scan; keep the back one at 23mm or larger.
+- **Both QRs decode out of the rendered PNGs** (crop the corner, `cv2.QRCodeDetector`) to the exact intended URL. A QR that was right in the source can still render too small to scan; keep the back one at 23mm or larger. If the URL is not live yet, for example a page that has not been published, tell the user the QR leads nowhere until it is.
+- No `pre` is clipped (`clippedPre` empty on both pages).
 - PDF is 2 pages at `209.9 x 297.0 mm`.
 - Both pages report `sh == ch`.
 - Grep the HTML for banned strings - an old repo owner, a removed event name, a personal name, a dataset the user asked to drop, British spellings if the user writes US English. Report the counts as zeroes.
@@ -190,3 +197,5 @@ Poster copy is the most-read prose in the repo per word. If the user has a writi
 - `justify-content: space-between` on a footer with one child left-aligns it. Fine, but check.
 - A `.tail` caveat that wraps pushes the h2 onto two lines; `white-space: nowrap` plus `flex: none` on it, and shorten the text.
 - Recompute per-unit numbers rather than trusting a summary, then reconcile against what the repo publishes.
+- `pre { overflow: hidden }` hides a clipped line. Measure `scrollWidth`, as in Step 6.
+- Rendering writes large temporary files. If playwright fails oddly, check free disk space before debugging the page.
