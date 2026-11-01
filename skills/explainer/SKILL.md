@@ -4,7 +4,7 @@ description: Build a self-contained HTML explainer for a technical topic - what 
 license: MIT-0
 metadata:
   author: aarora79
-  version: "1.5"
+  version: "1.6"
 ---
 
 # Explainer
@@ -122,7 +122,7 @@ A picture earns its place when it shows a mechanism, a flow, or a before and aft
 
 ## Step 5 - the page
 
-Typography that Google's own documentation would recognise, measured rather than eyeballed.
+Measured typography, in the teal and yellow palette that every explainer on [aarora79.github.io/explainers](https://aarora79.github.io/explainers/) uses. The palette matches the hero images on the [profile README](https://github.com/aarora79/aarora79), so a page lands on the site without a restyle.
 
 ```css
 :root {
@@ -131,13 +131,30 @@ Typography that Google's own documentation would recognise, measured rather than
   --sans: Inter, Roboto, -apple-system, "Segoe UI", system-ui, sans-serif;
   --mono: "JetBrains Mono", "Roboto Mono", ui-monospace, Menlo, Consolas, monospace;
 
-  --bg: #ffffff;  --panel: #f8f9fa;  --ink: #202124;  --ink-2: #3c4043;
-  --ink-3: #5f6368;  --rule: #dadce0;  --accent: #1a73e8;  --accent-2: #b06000;
-  --code-bg: #f1f3f4;
+  --bg: #fffdf5;  --panel: #ffffff;  --ink: #1d2b2a;  --ink-2: #2b3a39;
+  --ink-3: #52615f;  --rule: #e4e0d0;  --accent: #0f766e;  --accent-2: #f5c518;
+  --teal-soft: #e0f2ef;  --yellow-soft: #fff6cc;  --code-bg: #f3f1e8;
 }
-/* dark: --bg #202124, --panel #292a2d, --ink #e8eaed, --ink-3 #9aa0a6,
-   --rule #3c4043, --accent #8ab4f8, --accent-2 #fdd663, --code-bg #282a2e */
+/* dark: --bg #10191a, --panel #172224, --ink #e8efee, --ink-2 #d3dedd,
+   --ink-3 #9fb2b0, --rule #2a3a3b, --accent #4fd1c1, --accent-2 #f5c518,
+   --teal-soft #173a38, --yellow-soft #3a3312, --code-bg #1f2c2e */
 ```
+
+Teal carries headings and links, and yellow marks structure. Every ink shade above clears 4.5:1 on every background in both themes. Yellow does not clear it on cream, so never set text in `--accent-2`: use it for borders, rules and the fill behind a callout.
+
+```css
+header { border-left: 6px solid var(--accent-2); padding: 4px 0 4px 18px; }
+h1, h2 { color: var(--accent); }
+h2 { padding-bottom: 6px; border-bottom: 2px solid var(--accent-2); }
+th { background: var(--teal-soft); }
+.tile { background: var(--panel); border: 1px solid var(--rule);
+  border-top: 4px solid var(--accent); border-radius: 8px; }
+.callout { background: var(--yellow-soft); border-left: 4px solid var(--accent-2); }
+figure { background: var(--panel); border: 1px solid var(--rule);
+  border-radius: 10px; padding: 18px; }
+```
+
+Wrap the H1, standfirst and byline in a `<header>` so the yellow bar runs down all three. Inside a diagram, fill plain boxes with `--bg` so they stand off the white figure panel, highlighted boxes with `--teal-soft`, and warning boxes with `--yellow-soft`.
 
 | Element | Size |
 |---|---|
