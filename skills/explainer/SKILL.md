@@ -4,7 +4,7 @@ description: Build a self-contained HTML explainer for a technical topic - what 
 license: MIT-0
 metadata:
   author: aarora79
-  version: "1.7"
+  version: "1.8"
 ---
 
 # Explainer
@@ -174,15 +174,22 @@ Hold the prose to the measure and let the wide things break out of it:
   width: min(100%, var(--wide)); justify-self: center; }
 ```
 
-A code block stays in the prose column unless its longest line will not fit there. At 14.5px mono inside the 64ch measure, the column holds about 76 characters, so give `class="wide"` to any `<pre>` with a line longer than 74 and leave the rest alone. A two-line snippet stretched to 960px looks like it has spilled out of the page, and it gains nothing from the room. Mark the blocks from their line lengths:
+Code stays in the prose column, so write it to fit. At 14.5px mono inside the 64ch measure the column holds about 76 characters, so keep every code line at 72 or fewer: put one argument per line, give a long expression its own variable, and split a shell command with a trailing `\`. A block that breaks out to 960px sits wider than the text around it and looks like it has spilled out of the page, even when only one of its lines needed the room. When a script on the page also ships as a file the reader runs, rewrap both copies so they stay identical.
+
+Give `class="wide"` only to a block whose long line cannot wrap, such as a URL or a hash. Find the lines that need rewrapping before you ship:
 
 ```python
-import html, re
-def _mark_wide(m: re.Match) -> str:
-    longest = max(len(line) for line in html.unescape(m.group(2)).split("\n"))
-    return ('<pre class="wide">' if longest > 74 else "<pre>") + m.group(1) + m.group(2) + "</code></pre>"
-page = re.sub(r'<pre(?: class="wide")?>(<code[^>]*>)(.*?)</code></pre>', _mark_wide, page, flags=re.S)
+import html
+import re
+
+CODE = r"<pre[^>]*><code[^>]*>(.*?)</code></pre>"
+for i, block in enumerate(re.findall(CODE, page, re.S)):
+    for line in html.unescape(block).split("\n"):
+        if len(line) > 72:
+            print(f"block {i}, {len(line)} chars: {line}")
 ```
+
+Turn ligatures off in code (`code, pre { font-variant-ligatures: none; }`). JetBrains Mono otherwise draws `->` and `==` as single glyphs, and a reader copying by eye types characters that are not in the source.
 
 Eight rules for the file itself:
 
